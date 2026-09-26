@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080a12">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNiMDZiZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNmQyOGQ5Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHJ4PSIxNiIgZmlsbD0idXJsKCNnKSIvPgogIDwhLS0gb3JiaXQgcmluZzogdGhlICJ1bml2ZXJzYWwiIG5vZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjI5IiByPSIxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utb3BhY2l0eT0iMC4yMCIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgPCEtLSBkb3dubG9hZCBhcnJvdyAtLT4KICA8cGF0aCBkPSJNMzIgMTQgVjMzIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTIyIDI1IGwxMCAxMCBsMTAgLTEwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPCEtLSB0cmF5IC8gaW5ib3ggLS0+CiAgPHBhdGggZD0iTTE3IDQxIHY0IGE1IDUgMCAwIDAgNSA1IGgyMCBhNSA1IDAgMCAwIDUgLTUgdi00IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=">
+<title>Universal Downloader</title>
+<style>
+/* ════════════════════════════════════════════════════════════════════════════
+   Universal Downloader — "Aurora" theme (ani.pm-inspired)
+   Cool blue-tinted dark · indigo→violet accent · glassy rounded surfaces.
+   Single source of truth below; every component reads from these tokens.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#080a12;
+  /* unslop-ignore: indigo-violet is the deliberate brand accent (app has always been
+     purple; ani.pm reference is indigo). Glass is used selectively — topbar + toasts
+     only — not on every surface, so panels below are SOLID by choice. */
+  --surface:#11131c;                   /* solid panel (deliberate, not glass) */
+  --surface-2:#161a26;                 /* raised panel (hover / headers) */
+  --inset:#0a0c15;                     /* recessed fields */
+  --border:rgba(255,255,255,.07);
+  --border-hi:rgba(255,255,255,.14);
+  --text:#e7e9f3; --dim:#969bb2; --faint:#5b6178; --ghost:#363c52;
+  --accent:#7c6cff; --accent-2:#b06cff; --accent-ink:#c7c0ff;
+  --grad:linear-gradient(135deg,#7c6cff 0%,#b06cff 100%);
+  --accent-soft:rgba(124,108,255,.15);
+  --accent-glow:0 6px 22px rgba(124,108,255,.38);
+  --danger:#ff5d6c;
+  --r:14px; --r-sm:9px; --r-pill:999px;
+  --shadow:0 12px 34px rgba(0,0,0,.42);
+  --blur:saturate(150%) blur(14px);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html{ scroll-behavior:smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+/* cinematic aurora glow fixed behind all content */
+body::before{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(58% 46% at 82% -6%, rgba(124,108,255,.22), transparent 68%),
+    radial-gradient(44% 40% at 10% 2%, rgba(176,108,255,.15), transparent 70%),
+    radial-gradient(70% 60% at 50% 118%, rgba(70,84,190,.12), transparent 72%);
+}
+
+/* ── Top bar ── glassy, sticky ─────────────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(10,12,20,.62);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--border);
+  padding: 0 22px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.logo { display:flex; align-items:center; gap:10px; font-size:16.5px; font-weight:700; color:#fff; letter-spacing:-.3px; }
+.logo-arrow {
+  width: 30px; height: 30px; background: var(--grad); border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: #fff; flex-shrink: 0;
+  box-shadow: var(--accent-glow);
+}
+.logo-sub { font-size: 10.5px; color: var(--ghost); font-weight: 500; margin-left: 3px; margin-top: 2px;
+            padding:2px 7px; border:1px solid var(--border); border-radius:var(--r-pill); }
+.spacer { flex: 1; }
+.env { display:flex; gap:6px; align-items:center; margin-right:4px; }
+.pill { font-size:10.5px; padding:4px 10px; border-radius:var(--r-pill); border:1px solid var(--border);
+        color:var(--faint); white-space:nowrap; background:rgba(255,255,255,.02); }
+.pill.ok { color:var(--accent-ink); border-color:var(--accent-line,rgba(124,108,255,.4)); background:var(--accent-soft); }
+.pill.no { color:#d59a5a; border-color:rgba(213,154,90,.28); background:rgba(213,154,90,.08); }
+a.pill { text-decoration:none; cursor:pointer; }
+a.pill:hover { color:var(--accent-ink); border-color:var(--accent); background:var(--accent-soft); }
+.topbar-actions { display: flex; gap: 6px; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn {
+  background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:var(--r-pill); color:var(--dim);
+  padding:8px 14px; cursor:pointer; font-size:12.5px; font-family:inherit;
+  white-space:nowrap; transition:background .14s,color .14s,border-color .14s,transform .1s; line-height:1;
+}
+.btn:hover { background:rgba(255,255,255,.08); color:var(--text); border-color:var(--border-hi); }
+.btn:active { background:rgba(255,255,255,.05); }
+.btn-green {
+  background:var(--grad); border:none; color:#fff; font-weight:600;
+  font-size:14px; padding:0 26px; height:42px; border-radius:var(--r-pill);
+  box-shadow:var(--accent-glow);
+}
+.btn-green:hover { filter:brightness(1.08); box-shadow:0 8px 26px rgba(124,108,255,.5); }
+.btn-green:active { filter:brightness(.96); }
+.btn-ghost { height:42px; padding:0 18px; border-radius:var(--r-pill); }
+.btn-danger { color:#ff8a8a; border-color:rgba(255,90,90,.35); }
+.btn-danger:hover { background:rgba(255,70,70,.14); color:#ffb3b3; border-color:rgba(255,90,90,.6); }
+.btn.busy { opacity:.6; pointer-events:none; }
+
+/* ── Shared glass surface ─────────────────────────────────────────────────── */
+.preview, .input-card {
+  background:var(--surface);
+  border:1px solid var(--border); border-radius:var(--r);
+  box-shadow:var(--shadow);
+}
+
+/* ── Preview panel ────────────────────────────────────────────────────────── */
+.preview { margin-bottom:18px; overflow:hidden; }
+.pv-head { display:flex; align-items:center; gap:12px; padding:14px 16px; background:var(--surface-2); border-bottom:1px solid var(--border); }
+.pv-title { font-size:14px; color:var(--text); font-weight:600; flex:1; }
+.pv-title b { color:var(--accent-ink); }
+.pv-actions { display:flex; gap:6px; }
+.pv-list { max-height:340px; overflow-y:auto; padding:6px; }
+.pv-item { display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:var(--r-sm); transition:background .12s; }
+.pv-item:hover { background:rgba(255,255,255,.04); }
+.pv-thumb { width:60px; height:38px; border-radius:6px; object-fit:cover; background:var(--inset); border:1px solid var(--border); flex-shrink:0; }
+.pv-idx { width:30px; text-align:right; color:var(--ghost); font-family:'Consolas',monospace; font-size:12px; flex-shrink:0; }
+.pv-info { flex:1; min-width:0; }
+.pv-name { font-size:13px; color:#ccced9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pv-dur { font-size:11px; color:var(--faint); font-family:'Consolas',monospace; }
+.pv-dl { background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--dim); padding:6px 10px; cursor:pointer; font-size:12px; flex-shrink:0; transition:all .14s; }
+.pv-dl:hover { background:var(--grad); color:#fff; border-color:transparent; box-shadow:var(--accent-glow); }
+.pv-empty { padding:22px; text-align:center; color:var(--faint); font-size:13px; }
+/* loading skeleton — shimmer placeholder rows while a preview is being read */
+.pv-skel { display:flex; align-items:center; gap:11px; padding:8px 9px; }
+.pv-skel .sk { background:linear-gradient(90deg,rgba(255,255,255,.03) 25%,rgba(255,255,255,.09) 37%,rgba(255,255,255,.03) 63%);
+               background-size:400% 100%; border-radius:6px; animation:shimmer 1.3s ease-in-out infinite; }
+.pv-skel .sk-thumb { width:60px; height:38px; flex-shrink:0; }
+.pv-skel .sk-line { height:11px; }
+@keyframes shimmer { 0%{background-position:100% 0;} 100%{background-position:-100% 0;} }
+
+/* ── Main layout ──────────────────────────────────────────────────────────── */
+.main { flex:1; max-width:900px; width:100%; margin:0 auto; padding:26px 20px 48px; }
+
+/* ── Input card ───────────────────────────────────────────────────────────── */
+.input-card { padding:18px 20px; margin-bottom:20px; }
+.url-row { display:flex; gap:9px; margin-bottom:13px; }
+.url-input {
+  flex:1; background:var(--inset); border:1px solid var(--border); border-radius:var(--r-pill); color:var(--text);
+  padding:12px 18px; font-size:13.5px; font-family:inherit; outline:none;
+  transition:border-color .18s, box-shadow .18s; min-width:0;
+}
+.url-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.url-input::placeholder { color:var(--ghost); }
+.opts-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.sel {
+  background:var(--inset); border:1px solid var(--border); border-radius:var(--r-pill); color:#ccced9;
+  padding:9px 30px 9px 14px; font-size:13px; font-family:inherit; outline:none; cursor:pointer;
+  appearance:none; -webkit-appearance:none; transition:border-color .15s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%23969bb2' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 11px center;
+}
+.sel:focus { border-color:var(--accent); }
+.sel option { background:#12141f; }
+.audio-lbl { display:flex; align-items:center; gap:6px; color:var(--dim); font-size:13px; cursor:pointer; user-select:none; padding:4px 4px; }
+.audio-lbl input { accent-color:var(--accent); cursor:pointer; }
+.audio-lbl:hover { color:var(--text); }
+.hint { margin-left:auto; color:var(--ghost); font-size:12px; white-space:nowrap; }
+@media (max-width: 640px) { .hint { display:none; } }
+
+/* ── Folder shortcut row ──────────────────────────────────────────────────── */
+.folders { display:flex; gap:7px; margin-bottom:22px; flex-wrap:wrap; }
+.fbtn {
+  background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:var(--r-pill); color:var(--dim);
+  padding:8px 14px; cursor:pointer; font-size:12.5px; font-family:inherit;
+  display:flex; align-items:center; gap:6px; transition:all .14s;
+}
+.fbtn:hover { background:rgba(255,255,255,.07); color:var(--text); border-color:var(--border-hi); }
+
+/* ── Section header ───────────────────────────────────────────────────────── */
+.sec-hdr { display:flex; align-items:center; gap:12px; margin-bottom:13px; color:var(--faint); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.sec-hdr hr { flex:1; border:none; border-top:1px solid var(--border); }
+.sec-count { background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:var(--r-pill); padding:1px 9px; font-size:11px; color:var(--dim); }
+.sec-hdr.collapsible { cursor:pointer; user-select:none; transition:color .14s; }
+.sec-hdr.collapsible:hover { color:var(--dim); }
+.sec-caret { display:inline-block; width:11px; font-size:10px; transition:transform .16s; }
+.sec-hdr.collapsed .sec-caret { transform:rotate(-90deg); }
+
+/* ── Library (per-profile counts) ─────────────────────────────────────────── */
+.library { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:22px; }
+.lib-row { display:flex; align-items:center; gap:9px; background:var(--surface); border:1px solid var(--border);
+           border-radius:var(--r-pill); padding:9px 14px; cursor:pointer; transition:all .14s; }
+.lib-row:hover { background:var(--accent-soft); border-color:var(--accent); transform:translateY(-1px); }
+.lib-ic { font-size:14px; }
+.lib-name { font-size:13px; color:var(--text); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lib-frac { font-size:11.5px; color:var(--accent-ink); font-family:'Consolas',monospace; }
+.lib-frac.dim { color:var(--faint); }
+.lib-count { font-size:12.5px; font-weight:700; color:var(--accent-ink); background:var(--accent-soft); border:1px solid rgba(124,108,255,.28); border-radius:var(--r-pill); padding:2px 10px; min-width:28px; text-align:center; }
+.lib-empty { color:var(--faint); font-size:13px; padding:4px 2px; }
+
+.overall { margin: 0 0 15px; }
+.ov-bar { height:6px; background:rgba(255,255,255,.06); border-radius:var(--r-pill); overflow:hidden; }
+.ov-fill { height:100%; width:0%; background:var(--grad); border-radius:var(--r-pill); transition:width .4s ease; box-shadow:0 0 12px rgba(124,108,255,.5); }
+.ov-text { margin-top:9px; font-size:12.5px; color:var(--dim); display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.ov-text b { color:var(--accent-ink); font-weight:700; font-size:14px; }
+.ov-text .sep { color:var(--ghost); }
+.ov-text .rem { color:var(--text); }
+.ov-text .fail { color:var(--danger); }
+.ov-text .pct { color:var(--faint); margin-left:auto; font-family:'Consolas',monospace; }
+
+/* ── Job cards ────────────────────────────────────────────────────────────── */
+.jobs { display:flex; flex-direction:column; gap:8px; }
+.card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
+  padding:13px 15px; display:flex; align-items:flex-start; gap:12px; transition:border-color .15s, background .15s, box-shadow .15s;
+}
+.card:hover { border-color:var(--border-hi); background:var(--surface-2); }
+/* State encoded on the whole frame, not a left rail: the ACTIVE download gets a soft
+   accent ring+glow so it reads at a glance; errors get a quiet danger border; queued
+   and finished stay neutral (their status pill already carries the state). */
+.card.s-downloading { border-color:rgba(124,108,255,.55); box-shadow:0 0 0 1px rgba(124,108,255,.22), 0 10px 26px -14px var(--accent); }
+.card.s-error       { border-color:rgba(255,93,108,.42); }
+
+/* Thumbnail / badge */
+.thumb {
+  width:66px; height:44px; border-radius:8px; flex-shrink:0; object-fit:cover;
+  background:var(--inset); border:1px solid var(--border); margin-top:1px;
+}
+.pbadge {
+  width:66px; height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; flex-shrink:0; margin-top:1px;
+  border:1px solid var(--border);
+}
+.pb-yt{background:#2c0a0a;color:#ff5555;} .pb-tk{background:#062020;color:#5ec8ce;}
+.pb-ig{background:#280a1a;color:#e03070;} .pb-tw{background:#051525;color:#1a91da;}
+.pb-ttv{background:#150a25;color:#8a3ff0;} .pb-sc{background:#1e1005;color:#f05500;}
+.pb-rd{background:#200a05;color:#f04000;} .pb-vm{background:#051520;color:#17b5e5;}
+.pb-xx{background:rgba(255,255,255,.05);color:var(--dim);}
+
+.card-body { flex:1; min-width:0; }
+.card-title { font-size:13.5px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+.card-url { font-size:11px; color:var(--ghost); font-family:'Consolas',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:7px; }
+.card-meta { display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:12px; }
+.card-err { color:var(--danger); font-size:11.5px; margin-top:6px; word-break:break-word; }
+
+.sbadge { padding:3px 9px; border-radius:var(--r-pill); font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+.sb-queued{background:rgba(255,255,255,.05);color:var(--dim);}
+.sb-downloading{background:var(--accent-soft);color:var(--accent-ink);}
+.sb-finished{background:rgba(111,92,255,.16);color:#a99cff;}
+.sb-error{background:rgba(255,93,108,.14);color:var(--danger);}
+
+.tbadge { font-size:11px; color:var(--faint); display:inline-flex; align-items:center; gap:3px; }
+.card-speed{color:var(--dim);font-family:'Consolas',monospace;} .card-eta{color:var(--faint);font-family:'Consolas',monospace;}
+.card-count{color:var(--dim);}
+.card-fname{color:var(--accent-ink);font-family:'Consolas',monospace;font-size:11px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.prog-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:var(--r-pill);overflow:hidden;margin:7px 0 5px;}
+.prog-bar{height:100%;background:var(--grad);border-radius:var(--r-pill);transition:width .4s ease;box-shadow:0 0 10px rgba(124,108,255,.5);}
+.prog-bar.pulse{width:35%!important;animation:sweep 1.6s ease-in-out infinite;}
+@keyframes sweep{0%{transform:translateX(-200%);}100%{transform:translateX(400%);}}
+
+.card-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;padding-top:1px;}
+.card-pct{font-size:13px;font-weight:600;font-family:'Consolas',monospace;color:var(--dim);width:42px;text-align:right;}
+.card-pct.done{color:var(--accent-ink);}
+
+.empty{text-align:center;padding:64px 24px;color:var(--ghost);}
+.empty-icon{font-size:46px;margin-bottom:14px;opacity:.5;}
+.empty-title{font-size:16px;color:var(--dim);margin-bottom:8px;font-weight:600;}
+.empty-sub{font-size:13px;color:var(--faint);line-height:1.7;}
+.empty-sub strong{color:var(--dim);}
+
+::-webkit-scrollbar{width:8px;height:8px;} ::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.10);border-radius:var(--r-pill);border:2px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:rgba(124,108,255,.45);background-clip:padding-box;}
+
+/* ── Accessibility & micro-interactions ───────────────────────────────────── */
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.url-input:focus-visible, .sel:focus-visible { outline:none; }
+.btn:active, .fbtn:active, .pv-dl:active, .lib-row:active { transform:translateY(1px); }
+
+@keyframes cardIn { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:none;} }
+.card.enter { animation:cardIn .24s cubic-bezier(.2,.7,.3,1) both; }
+
+/* ── Toasts ───────────────────────────────────────────────────────────────── */
+.toasts { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:50;
+          display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; }
+.toast { background:rgba(18,20,32,.86); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+         border:1px solid var(--border-hi); border-left:3px solid var(--accent); color:var(--text);
+         font-size:13px; padding:11px 18px; border-radius:var(--r); box-shadow:var(--shadow);
+         max-width:380px; animation:toastIn .25s ease both; }
+.toast.err { border-left-color:var(--danger); }
+.toast.out { animation:toastOut .25s ease forwards; }
+@keyframes toastIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:none;} }
+@keyframes toastOut { to{opacity:0;transform:translateY(10px);} }
+
+/* ── Scanning cards (profile/tag enumeration in progress) ─────────────────── */
+.scanlist { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.scan-card { display:flex; align-items:center; gap:14px; padding:14px 18px; border-radius:var(--r);
+             background:var(--surface,#12141f); border:1px solid var(--border-hi);
+             border-left:3px solid var(--accent); animation:cardIn .2s ease both; }
+.scan-spin { width:20px; height:20px; flex:none; border-radius:50%;
+             border:2.5px solid rgba(255,255,255,.14); border-top-color:var(--accent);
+             animation:scanspin .8s linear infinite; }
+@keyframes scanspin { to { transform:rotate(360deg); } }
+.scan-body { min-width:0; flex:1; }
+.scan-title { font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap;
+              overflow:hidden; text-overflow:ellipsis; }
+.scan-note { font-size:12px; color:var(--dim); margin-top:2px; }
+.scan-count { flex:none; font-size:13px; font-weight:700; color:var(--accent);
+              background:var(--accent-soft,rgba(124,108,255,.12)); border-radius:var(--r-pill); padding:4px 12px; }
+
+/* ── Blocklist manager ────────────────────────────────────────────────────── */
+.bl-overlay { position:fixed; inset:0; z-index:60; background:rgba(4,5,10,.66);
+              -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
+              display:flex; align-items:center; justify-content:center; padding:20px; }
+.bl-card { width:min(620px,100%); max-height:86vh; overflow-y:auto; background:var(--panel,#12141f);
+           border:1px solid var(--border-hi); border-radius:var(--r-lg,16px); box-shadow:var(--shadow);
+           padding:22px 24px; animation:cardIn .2s ease both; }
+.bl-head { display:flex; align-items:center; justify-content:space-between; font-size:17px; font-weight:700; }
+.bl-sub { color:var(--dim); font-size:12.5px; margin:8px 0 16px; line-height:1.5; }
+.bl-add { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
+.bl-input { flex:1; min-width:200px; background:rgba(255,255,255,.05); border:1px solid var(--border-hi);
+            border-radius:var(--r-pill); color:var(--text); padding:11px 16px; font-size:13.5px; font-family:inherit; }
+.bl-input:focus { outline:none; border-color:var(--accent); }
+.bl-chk { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); white-space:nowrap; cursor:pointer; }
+.bl-sechdr { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint);
+             margin:16px 0 9px; }
+.bl-note { font-weight:500; text-transform:none; letter-spacing:0; color:var(--faint); opacity:.75; }
+.bl-tags { display:flex; flex-wrap:wrap; gap:7px; }
+.bl-tag { display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,.05);
+          border:1px solid var(--border); border-radius:var(--r-pill); padding:5px 6px 5px 13px; font-size:12.5px; }
+.bl-tag button { background:none; border:none; color:var(--faint); cursor:pointer; font-size:13px; line-height:1;
+                 width:20px; height:20px; border-radius:50%; transition:all .12s; }
+.bl-tag button:hover { background:rgba(255,90,90,.18); color:#ff9a9a; }
+.bl-empty { color:var(--faint); font-size:12px; font-style:italic; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.001ms!important; transition-duration:.001ms!important; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-arrow">⬇</div>
+    Universal Downloader
+    <span class="logo-sub" id="verTag">local</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="env">
+    <span class="pill" id="pillFfmpeg">ffmpeg …</span>
+    <span class="pill" id="pillCookies">cookies …</span>
+    <span class="pill" id="pillDisk" style="display:none" title="Free space on the download drive"></span>
+    <span class="pill" id="pillTelegram" style="display:none"></span>
+    <span class="pill" id="pillYtdlp" style="display:none;cursor:pointer" onclick="updateEngine()" title="yt-dlp extractor engine — click to update"></span>
+    <a class="pill" id="pillUserscript" href="/userscript.user.js" target="_blank" rel="noopener" title="Install or update the Tampermonkey grabber userscript. Alt+Shift+D toggles it on a site.">🧩 Userscript</a>
+    <span class="pill ok" id="pillAria2" style="display:none">⚡ fast</span>
+    <span class="pill" id="pillFiltered" style="display:none"></span>
+    <span class="pill" id="pillVerify" style="display:none"></span>
+    <span class="pill" id="pillComplete" style="display:none"></span>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn" id="btnVerify" onclick="rescan()" title="Check finished files for corruption and re-download any that are broken">🛡 Scan</button>
+    <button class="btn" id="btnRecheck" onclick="recheck()" title="Re-scrape every profile and re-download any posts that are missing">🔁 Posts</button>
+    <button class="btn" onclick="openBlocklist()" title="View and edit which words/posters are blocked from downloading">🚫 Blocklist</button>
+    <button class="btn" id="btnPause" onclick="togglePause()">⏸ Pause</button>
+    <button class="btn" id="btnRetryFailed" onclick="retryFailed()" style="display:none" title="Requeue every failed download for another attempt">↻ Retry Failed</button>
+    <button class="btn btn-danger" id="btnCancelAll" onclick="cancelAll()" style="display:none" title="Stop all active and queued downloads (finished/failed are kept)">⛔ Cancel All</button>
+    <button class="btn" onclick="clearDone()">✕ Clear Done</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- URL input -->
+  <div class="input-card">
+    <div class="url-row">
+      <input id="urlInput" class="url-input" type="url"
+        placeholder="Paste URL — YouTube, TikTok, Instagram, playlist, channel, or any site…"
+        onkeydown="if(event.key==='Enter') submit()">
+      <button class="btn btn-ghost" id="btnPaste" onclick="pasteUrl()" title="Paste a URL from your clipboard">📋 Paste</button>
+      <button class="btn btn-ghost" id="btnPreview" onclick="doPreview()">🔍 Preview</button>
+      <button class="btn btn-green" onclick="submit()">▶ Download</button>
+    </div>
+    <div class="opts-row">
+      <select id="selFmt" class="sel" onchange="onFmtChange()">
+        <option value="mp4">📹 Video (MP4)</option>
+        <option value="best">⭐ Best Available</option>
+        <option value="mp3">🎵 Audio Only (MP3)</option>
+      </select>
+      <select id="selQual" class="sel">
+        <option value="best">Best Quality</option>
+        <option value="1080">1080p</option>
+        <option value="720">720p</option>
+        <option value="480">480p</option>
+        <option value="360">360p</option>
+      </select>
+      <label class="audio-lbl">
+        <input type="checkbox" id="chkAudio" onchange="onAudioToggle()">
+        Audio only
+      </label>
+      <span class="hint">Paste a playlist or channel URL to grab everything at once</span>
+    </div>
+  </div>
+
+  <!-- Preview panel (hidden until 🔍 Preview is used) -->
+  <div class="preview" id="previewPanel" style="display:none">
+    <div class="pv-head">
+      <div class="pv-title" id="pvTitle">Preview</div>
+      <div class="pv-actions">
+        <button class="btn btn-green" id="pvDownloadAll" onclick="downloadAllPreview()">⬇ Download All</button>
+        <button class="btn btn-ghost" onclick="closePreview()">✕ Close</button>
+      </div>
+    </div>
+    <div class="pv-list" id="pvList"></div>
+  </div>
+
+  <!-- Folder shortcuts -->
+  <div class="folders">
+    <button class="fbtn" onclick="openFolder('')">📁 All</button>
+    <button class="fbtn" onclick="openFolder('video')">📹 Videos</button>
+    <button class="fbtn" onclick="openFolder('audio')">🎵 Audios</button>
+    <button class="fbtn" onclick="openFolder('image')">🖼️ Images</button>
+    <button class="fbtn" onclick="openFolder('live')">🔴 Lives</button>
+  </div>
+
+  <!-- Library: how many videos each profile has -->
+  <div class="sec-hdr collapsible" id="libHdr" onclick="toggleLib()" title="Click to hide or show the Library">
+    <span class="sec-caret" id="libCaret">▾</span><span>Library · per profile</span><hr><span class="sec-count" id="libCount">0</span>
+  </div>
+  <div class="library" id="libList"></div>
+
+  <!-- Downloads -->
+  <div class="sec-hdr"><span>Downloads</span><hr><span class="sec-count" id="jobCount">0</span></div>
+  <div class="overall" id="overall" style="display:none">
+    <div class="ov-bar"><div class="ov-fill" id="ovFill"></div></div>
+    <div class="ov-text" id="ovText"></div>
+  </div>
+  <div class="scanlist" id="scanList" style="display:none"></div>
+  <div class="jobs" id="jobsList"></div>
+
+  <div class="empty" id="emptyState">
+    <div class="empty-icon">⬇</div>
+    <div class="empty-title">No downloads yet</div>
+    <div class="empty-sub">
+      YouTube, TikTok, Instagram, Twitter/X, Twitch, SoundCloud, Reddit, Vimeo + 1000 more.<br>
+      Files sort into <strong>videos / audios / images / lives</strong>, then a folder per <strong>poster</strong>.<br>
+      Paste a <strong>playlist or channel URL</strong> to bulk-download the whole page.
+    </div>
+  </div>
+
+</div>
+
+<!-- Blocklist manager (hidden until 🚫 Blocklist is clicked) -->
+<div class="bl-overlay" id="blModal" style="display:none" onclick="if(event.target===this)closeBlocklist()">
+  <div class="bl-card">
+    <div class="bl-head">
+      <span>🚫 Blocklist</span>
+      <button class="btn" onclick="closeBlocklist()">✕ Close</button>
+    </div>
+    <div class="bl-sub">Anything whose title matches one of these is never scraped, queued, or downloaded. Edits apply instantly — no restart.</div>
+    <div class="bl-add">
+      <input id="blInput" class="bl-input" placeholder="Add a word to block in titles…"
+             onkeydown="if(event.key==='Enter')blAdd()">
+      <label class="bl-chk" title="Only match when it's a separate word (e.g. 'trans' won't block 'Transformers')">
+        <input type="checkbox" id="blWhole"> whole word only
+      </label>
+      <button class="btn btn-green" onclick="blAdd()">＋ Add</button>
+    </div>
+    <div class="bl-sechdr">Blocked words <span class="bl-note">— matches anywhere in a title</span></div>
+    <div class="bl-tags" id="blKeywords"></div>
+    <div class="bl-sechdr">Exact-word blocks <span class="bl-note">— matches whole words only (ts, cd, trans…)</span></div>
+    <div class="bl-tags" id="blWords"></div>
+    <div class="bl-sechdr">Blocked posters <span class="bl-note">— their uploads never download</span></div>
+    <div class="bl-tags" id="blPosters"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+const PLATFORMS = [
+  [/youtu\.?be/,"YT","pb-yt"], [/tiktok\.com/,"TK","pb-tk"],
+  [/instagram\.com/,"IG","pb-ig"], [/twitter\.com|x\.com/,"𝕏","pb-tw"],
+  [/twitch\.tv/,"TTV","pb-ttv"], [/soundcloud\.com/,"SC","pb-sc"],
+  [/reddit\.com/,"RD","pb-rd"], [/vimeo\.com/,"VM","pb-vm"],
+];
+const EXTRACTOR_MAP={youtube:"pb-yt",youtubetab:"pb-yt",tiktok:"pb-tk",instagram:"pb-ig",
+  twitter:"pb-tw",x:"pb-tw",twitch:"pb-ttv",soundcloud:"pb-sc",reddit:"pb-rd",vimeo:"pb-vm"};
+const EXTRACTOR_LABEL={youtube:"YT",youtubetab:"YT",tiktok:"TK",instagram:"IG",
+  twitter:"𝕏",x:"𝕏",twitch:"TTV",soundcloud:"SC",reddit:"RD",vimeo:"VM"};
+const TYPE_ICON={video:"📹",audio:"🎵",image:"🖼️",live:"🔴"};
+
+function getPlatform(job){
+  const k=(job.platform||"").toLowerCase();
+  if(k&&EXTRACTOR_MAP[k]) return {label:EXTRACTOR_LABEL[k]||k.slice(0,3).toUpperCase(),cls:EXTRACTOR_MAP[k]};
+  const u=(job.url||"").toLowerCase();
+  for(const [re,label,cls] of PLATFORMS) if(re.test(u)) return {label,cls};
+  return {label:"WEB",cls:"pb-xx"};
+}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function toast(msg,isErr){
+  const c=document.getElementById("toasts"); if(!c) return;
+  const t=document.createElement("div"); t.className="toast"+(isErr?" err":""); t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(()=>{ t.classList.add("out"); t.addEventListener("animationend",()=>t.remove(),{once:true}); },2600);
+}
+function trunc(s,n=72){try{s=decodeURIComponent(s);}catch{}return s.length>n?s.slice(0,n)+"…":s;}
+function fmtBytes(b){
+  b=Number(b)||0;
+  if(b>=1099511627776) return (b/1099511627776).toFixed(2)+" TB";
+  if(b>=1073741824)    return (b/1073741824).toFixed(1)+" GB";
+  if(b>=1048576)       return (b/1048576).toFixed(0)+" MB";
+  return (b/1024).toFixed(0)+" KB";
+}
+// Telegram push status pill.
+function renderTelegram(t){
+  const pill=document.getElementById("pillTelegram"); if(!pill) return;
+  if(!t || !t.enabled){ pill.style.display="none"; return; }
+  pill.style.display="";
+  const sent=t.sent||0, pend=t.pending||0, fail=t.failed||0;
+  if(t.ready){
+    pill.className="pill ok";
+    pill.textContent=`✈ Telegram ✓ ${sent} sent`+(pend?` · ${pend} queued`:"")+(fail?` · ${fail} failed`:"");
+    pill.title=`Pushing finished downloads to “${t.chat||"?"}”`+(t.delete_after?" and deleting the local copy.":".")
+              +(t.last?`\nLast sent: ${t.last}`:"");
+  }else{
+    pill.className="pill no";
+    pill.textContent="✈ Telegram — setup needed";
+    pill.title=(t.error||"Run telegram_login.py once, then restart the app.");
+  }
+}
+
+// Free space vs. estimated size of everything still queued. Warns before the drive fills.
+let _diskWarned=false;
+function renderDisk(space){
+  const pill=document.getElementById("pillDisk"); if(!pill) return;
+  if(!space){ pill.style.display="none"; return; }
+  pill.style.display="";
+  const need=space.needed||0, free=space.free||0, fits=space.fits!==false;
+  const drive=space.drive?space.drive+" ":"";
+  if(need>0 && !fits){
+    const short=need-free;
+    pill.className="pill no";
+    pill.textContent=`💾 ${fmtBytes(free)} free · ⚠ ~${fmtBytes(short)} short`;
+    pill.title=`${drive}drive has ${fmtBytes(free)} free but the queue needs about ${fmtBytes(need)}. `
+              +`Free up ~${fmtBytes(short)} or the downloads will run out of room.`;
+    if(!_diskWarned){ _diskWarned=true; toast(`⚠ Not enough space — queue needs ~${fmtBytes(need)}, only ${fmtBytes(free)} free`,true); }
+  }else{
+    // healthy: green when there's comfortable headroom, neutral when it's getting tight
+    const tight = need>0 && free-need < 5*1073741824;   // under 5 GB of headroom after the queue
+    pill.className="pill "+(tight?"":"ok");
+    pill.textContent = need>0
+      ? `💾 ${fmtBytes(free)} free · fits (~${fmtBytes(need)})`
+      : `💾 ${fmtBytes(free)} free`;
+    pill.title = need>0
+      ? `${drive}drive: ${fmtBytes(free)} free of ${fmtBytes(space.total)}. Queue needs about ${fmtBytes(need)} — it fits.`
+      : `${drive}drive: ${fmtBytes(free)} free of ${fmtBytes(space.total)}.`;
+    _diskWarned=false;   // reset so a future overflow toasts again
+  }
+}
+
+// Parts of a card are split out so updateCard() can patch only what changes,
+// leaving the <img> thumbnail untouched (no per-second flicker) and the
+// progress bar element alive (so its width transition actually animates).
+function cardVisual(job){
+  const {label,cls}=getPlatform(job);
+  return job.thumb
+    ? `<img class="thumb" src="${esc(job.thumb)}" onerror="this.outerHTML='<div class=&quot;pbadge ${cls}&quot;>${label}</div>'">`
+    : `<div class="pbadge ${cls}">${label}</div>`;
+}
+function metaHtml(job){
+  const isDl=job.status==="downloading", isFin=job.status==="finished", isPl=job.items_total>1;
+  const sbMap={queued:"sb-queued",downloading:"sb-downloading",finished:"sb-finished",error:"sb-error"};
+  const sbTxt={queued:"Queued",downloading:"● Downloading",finished:"✓ Finished",error:"✕ Error"};
+  let meta=`<span class="sbadge ${sbMap[job.status]||"sb-queued"}">${sbTxt[job.status]||job.status}</span>`;
+  meta+=`<span class="tbadge">${TYPE_ICON[job.type]||"📹"} ${esc(job.type||"video")}</span>`;
+  if(isDl){
+    if(job.speed) meta+=`<span class="card-speed">${esc(job.speed)}</span>`;
+    if(job.eta)   meta+=`<span class="card-eta">ETA ${esc(job.eta)}</span>`;
+  }
+  if(isPl) meta+=`<span class="card-count">${job.items_done} / ${job.items_total} files</span>`;
+  else if(isFin&&job.filename) meta+=`<span class="card-fname" title="${esc(job.filename)}">${esc(job.filename)}</span>`;
+  return meta;
+}
+function rightHtml(job){
+  const isDl=job.status==="downloading", isFin=job.status==="finished";
+  let right="";
+  if(isDl){const pct=Math.min(100,Math.max(0,job.progress));right=`<span class="card-pct">${pct>0?pct.toFixed(0)+"%":"…"}</span>`;}
+  else if(isFin) right=`<span class="card-pct done">✓</span>`;
+  if(job.status==="error") right+=`<button class="btn" style="padding:4px 8px;font-size:12px" onclick="retryJob('${esc(job.id)}')" title="Retry this download">↻</button>`;
+  if(job.uploader) right+=`<button class="btn" style="padding:4px 8px;font-size:12px" onclick="blockPoster('${esc(job.uploader)}')" title="Block this poster — remove their queue and never download from them again">🚫</button>`;
+  right+=`<button class="btn" style="padding:4px 8px;font-size:12px" onclick="deleteJob('${esc(job.id)}')" title="Remove">✕</button>`;
+  return right;
+}
+// structural signature — when this changes the card must be rebuilt, not patched
+function structSig(job){
+  const hasProg=job.status==="downloading"||job.status==="finished";
+  return (job.thumb?"t":"b")+(hasProg?"p":"-");
+}
+function cardTitle(job){ return (job.title&&job.title!==job.url)?trunc(job.title):trunc(job.url); }
+
+function renderCard(job){
+  const isDl=job.status==="downloading", isFin=job.status==="finished", isErr=job.status==="error";
+  let progHtml="";
+  if(isDl||isFin){
+    const pct=Math.min(100,Math.max(0,job.progress));
+    const ind=isDl&&pct<1;
+    progHtml=`<div class="prog-wrap"><div class="prog-bar${ind?" pulse":""}" style="width:${ind?35:pct}%"></div></div>`;
+  }
+  const errLine=isErr&&job.error?`<div class="card-err">${esc(job.error.slice(0,160))}</div>`:"";
+  return `<div class="card s-${job.status}" data-id="${esc(job.id)}" data-struct="${structSig(job)}">
+    ${cardVisual(job)}
+    <div class="card-body">
+      <div class="card-title">${esc(cardTitle(job))}</div>
+      <div class="card-url">${esc(trunc(job.url,70))}</div>
+      ${progHtml}
+      <div class="card-meta">${metaHtml(job)}</div>
+      ${errLine}
+    </div>
+    <div class="card-right">${rightHtml(job)}</div>
+  </div>`;
+}
+
+// Patch an existing card node in place. Returns false if a structural rebuild
+// is needed (thumbnail<->badge swap, or progress bar appearing/disappearing).
+function updateCard(el, job){
+  if(el.dataset.struct!==structSig(job)) return false;
+  el.className="card s-"+job.status;
+  const isDl=job.status==="downloading", isErr=job.status==="error";
+  const tEl=el.querySelector(".card-title"), title=cardTitle(job);
+  if(tEl&&tEl.textContent!==title) tEl.textContent=title;     // textContent auto-escapes
+  const bar=el.querySelector(".prog-bar");
+  if(bar){
+    const pct=Math.min(100,Math.max(0,job.progress)), ind=isDl&&pct<1;
+    bar.classList.toggle("pulse",ind);
+    bar.style.width=(ind?35:pct)+"%";                          // in place → smooth transition
+  }
+  const m=el.querySelector(".card-meta"); if(m) m.innerHTML=metaHtml(job);   // no <img> inside → no flicker
+  const r=el.querySelector(".card-right"); if(r) r.innerHTML=rightHtml(job);
+  let errEl=el.querySelector(".card-err");
+  if(isErr&&job.error){
+    const txt=job.error.slice(0,160);
+    if(!errEl){ errEl=document.createElement("div"); errEl.className="card-err"; el.querySelector(".card-body").appendChild(errEl); }
+    if(errEl.textContent!==txt) errEl.textContent=txt;
+  } else if(errEl){ errEl.remove(); }
+  return true;
+}
+
+// Live "scanning…" cards for profile/tag enumerations that are still finding videos.
+function renderScanning(items){
+  items = items || [];
+  const sc = document.getElementById("scanList"); if(!sc) return;
+  if(!items.length){ if(sc._sig!==""){ sc.innerHTML=""; sc.style.display="none"; sc._sig=""; } return; }
+  const sig = JSON.stringify(items.map(e=>[e.id,e.found,e.note,e.url]));
+  if(sig===sc._sig) return;                         // nothing changed since last poll
+  sc._sig = sig;
+  sc.style.display="";
+  sc.innerHTML = items.map(it=>{
+    const label = (it.kind||"scanning").toUpperCase();
+    return `<div class="scan-card">
+      <div class="scan-spin"></div>
+      <div class="scan-body">
+        <div class="scan-title">🔍 Scanning ${esc(label)} — ${esc(trunc(it.url,64))}</div>
+        <div class="scan-note">${esc(it.note||"working…")}</div>
+      </div>
+      <div class="scan-count">${it.found||0} found</div>
+    </div>`;
+  }).join("");
+}
+
+function renderJobs(data){
+  // server sends {jobs:[capped list], counts:{...}}; tolerate the old plain-array shape too
+  const jobs = Array.isArray(data) ? data : (data.jobs || []);
+  const c    = Array.isArray(data) ? null : data.counts;
+  const exp  = Array.isArray(data) ? [] : (data.expanding || []);
+  renderDisk(Array.isArray(data) ? null : data.space);   // update the disk-space pill every poll
+  renderScanning(exp);                                    // update "scanning…" cards every poll
+  // skip the (expensive) re-render when nothing visible changed since last poll
+  const sig = JSON.stringify([c, exp.map(e=>[e.id,e.found,e.note]),
+    jobs.map(j=>[j.id,j.status,j.progress,j.items_done,j.filename,j.speed,j.eta,j.title,j.thumb?1:0])]);
+  if(sig===renderJobs._sig) return;
+  renderJobs._sig=sig;
+  const list=document.getElementById("jobsList"), empty=document.getElementById("emptyState");
+  const overall=document.getElementById("overall");
+  const total = c ? c.total : jobs.length;
+  document.getElementById("jobCount").textContent=total;
+  const showBtn=(id,on)=>{const b=document.getElementById(id);if(b)b.style.display=on?"":"none";};
+  if(!total){ list.innerHTML=""; _cardNodes.clear(); renderJobs._active=exp.length>0; renderJobs._peak=0;
+    empty.style.display = exp.length ? "none" : ""; overall.style.display="none";
+    showBtn("btnCancelAll",false); showBtn("btnRetryFailed",false); return; }
+  empty.style.display="none";
+
+  // overall progress uses the TRUE counts (the jobs list is capped for performance)
+  const done = c ? (c.finished||0) : jobs.filter(j=>j.status==="finished").length;
+  const err  = c ? (c.error||0)    : jobs.filter(j=>j.status==="error").length;
+  const rem =total-done-err;                       // queued + downloading
+  renderJobs._active = rem>0 || exp.length>0;       // drives the adaptive poll interval
+  showBtn("btnCancelAll", rem>0);                   // only offer Cancel All when work is active
+  showBtn("btnRetryFailed", err>0);                 // only offer Retry Failed when something failed
+  // Bar uses the session PEAK total as its denominator so it doesn't lurch backward every
+  // time a background scan adds/prunes queued jobs — "done" can sit still for a long time
+  // while a few huge downloads hold every slot. The text below still shows the live total.
+  const peak = renderJobs._peak = Math.max(renderJobs._peak||0, total);
+  const pct =peak?Math.round((done+err)/peak*100):0;      // % processed (bar fills as queue clears)
+  document.getElementById("ovFill").style.width=pct+"%";
+  let t=`<span><b>${done}</b> / ${total} done</span>`+
+        `<span class="sep">·</span><span class="rem">${rem} remaining</span>`;
+  if(err) t+=`<span class="sep">·</span><span class="fail">${err} failed</span>`;
+  t+=`<span class="pct">${pct}%</span>`;
+  document.getElementById("ovText").innerHTML=t;
+  overall.style.display="";
+
+  // order: downloading first, then queued, then errors, finished pushed to the end
+  const RANK={downloading:0, queued:1, error:2, finished:3};
+  const ordered=[...jobs].sort((a,b)=>(RANK[a.status]??9)-(RANK[b.status]??9));
+
+  // ── Keyed reconcile: patch cards in place, only build/remove what changed ──
+  const seen=new Set();
+  for(const job of ordered){
+    seen.add(job.id);
+    const existing=_cardNodes.get(job.id);
+    if(existing && updateCard(existing,job)) continue;        // fast path: patched in place
+    const tmp=document.createElement("div"); tmp.innerHTML=renderCard(job);
+    const fresh=tmp.firstElementChild;
+    if(existing){ existing.replaceWith(fresh); }               // structural change
+    else { fresh.classList.add("enter"); fresh.addEventListener("animationend",()=>fresh.classList.remove("enter"),{once:true}); }
+    _cardNodes.set(job.id,fresh);
+  }
+  for(const [id,el] of _cardNodes){ if(!seen.has(id)){ el.remove(); _cardNodes.delete(id); } }
+  // reorder only when the sequence actually changed (avoids needless DOM moves)
+  const orderKey=ordered.map(j=>j.id).join(",");
+  if(orderKey!==renderJobs._order){
+    renderJobs._order=orderKey;
+    for(const job of ordered) list.appendChild(_cardNodes.get(job.id));
+  }
+}
+const _cardNodes=new Map();   // job id -> live card element
+
+async function poll(){try{const r=await fetch("/api/jobs");if(r.ok)renderJobs(await r.json());}catch{}}
+
+// ── Adaptive, visibility-aware polling ──────────────────────────────────────
+// Poll fast (1s) only while work is active; back off to 4s when idle; nearly
+// stop (15s) when the tab is hidden. setTimeout-after-await prevents request
+// pile-up if the server is briefly slow. Cuts background load dramatically.
+let _jobsTimer=null, _slowTimer=null;
+function jobsDelay(){ return document.hidden ? 15000 : (renderJobs._active ? 1000 : 4000); }
+function scheduleJobs(){ clearTimeout(_jobsTimer); _jobsTimer=setTimeout(async()=>{ await poll(); scheduleJobs(); }, jobsDelay()); }
+function scheduleSlow(){ clearTimeout(_slowTimer); _slowTimer=setTimeout(()=>{ if(!document.hidden){ loadInfo(); loadLibrary(); } scheduleSlow(); }, document.hidden?20000:5000); }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ poll(); loadInfo(); loadLibrary(); scheduleJobs(); scheduleSlow(); } });
+poll(); scheduleJobs();
+
+async function loadInfo(){
+  try{
+    const r=await fetch("/api/info"); if(!r.ok)return; const i=await r.json();
+    const f=document.getElementById("pillFfmpeg"), c=document.getElementById("pillCookies");
+    f.textContent=i.ffmpeg?"ffmpeg ✓":"ffmpeg ✕"; f.className="pill "+(i.ffmpeg?"ok":"no");
+    c.textContent=i.cookies?"cookies ✓":"cookies —"; c.className="pill "+(i.cookies?"ok":"");
+    if(i.cookies_browser){ c.textContent="cookies ✓ +"+i.cookies_browser; c.title="Also pulling live cookies from your "+i.cookies_browser+" browser"; }
+    const yt=document.getElementById("pillYtdlp");
+    if(i.ytdlp_version){
+      const age=i.ytdlp_age_days, stale=(age!=null&&age>30);
+      yt.style.display="";
+      yt.textContent="yt-dlp "+i.ytdlp_version+(age!=null?" · "+age+"d":"");
+      yt.className="pill "+(stale?"no":"ok");
+      yt.title=(stale
+        ? "yt-dlp is "+age+" days old — sites may start failing. "
+        : "yt-dlp extractor engine ("+age+"d old). ")+"Click to update to the latest.";
+    }
+    document.getElementById("pillAria2").style.display = i.aria2 ? "" : "none";
+    renderTelegram(i.telegram);
+    if(i.version) document.getElementById("verTag").textContent = "v" + i.version;
+    const fp = document.getElementById("pillFiltered");
+    const nb = i.tag_blocked || 0, np = (i.posters_blocked || []).length;
+    if(nb || np){
+      fp.style.display = "";
+      fp.textContent   = `🚫 ${nb} filtered` + (np ? ` · ${np} poster${np>1?"s":""}` : "");
+      fp.title         = "Albums blocked by the tag-scan · posters on your blocklist";
+    }
+    setPaused(!!i.paused);
+    setVerify(i.verify);
+    setComplete(i.complete);
+  }catch{}
+}
+loadInfo();
+
+async function blockPoster(name){
+  if(!confirm(`Block poster "${name}"?\n\nTheir queued downloads are removed and nothing from them will ever download again.`)) return;
+  try{
+    await fetch("/api/block_poster",{method:"POST",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({name})});
+    renderJobs._sig = null;            // force the next poll to re-render
+    toast("🚫 Blocked "+name);
+  }catch{}
+  poll(); loadInfo();
+}
+
+// ── Blocklist manager ───────────────────────────────────────────────────────
+function openBlocklist(){ document.getElementById("blModal").style.display="flex"; loadBlocklist(); }
+function closeBlocklist(){ document.getElementById("blModal").style.display="none"; }
+function blTagRow(kind, items){
+  if(!items.length) return '<span class="bl-empty">none yet</span>';
+  return items.map(v=>`<span class="bl-tag">${esc(v)}<button title="Remove" onclick="blRemove('${kind}','${esc(v).replace(/'/g,"\\'")}')">✕</button></span>`).join("");
+}
+async function loadBlocklist(){
+  try{
+    const r=await fetch("/api/blocklist"); if(!r.ok) return; const d=await r.json();
+    document.getElementById("blKeywords").innerHTML=blTagRow("keyword", d.keywords||[]);
+    document.getElementById("blWords").innerHTML   =blTagRow("word",    d.words||[]);
+    document.getElementById("blPosters").innerHTML =blTagRow("poster",  d.posters||[]);
+  }catch{}
+}
+async function blAdd(){
+  const inp=document.getElementById("blInput"), val=inp.value.trim();
+  if(!val) return;
+  const kind=document.getElementById("blWhole").checked ? "word" : "keyword";
+  try{
+    const r=await fetch("/api/blocklist",{method:"POST",headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({action:"add",kind,value:val})});
+    const d=await r.json();
+    inp.value=""; document.getElementById("blWhole").checked=false;
+    loadBlocklist();
+    toast(`🚫 Blocked "${val}"`+(d.purged?` — removed ${d.purged} queued`:""));
+    renderJobs._sig=null; poll(); loadInfo();
+  }catch{ toast("Couldn't add that",true); }
+}
+async function blRemove(kind, value){
+  try{
+    await fetch("/api/blocklist",{method:"POST",headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({action:"remove",kind,value})});
+    loadBlocklist();
+    toast(`Unblocked "${value}"`);
+    loadInfo();
+  }catch{}
+}
+
+function setPaused(p){
+  const b=document.getElementById("btnPause");
+  b.textContent = p ? "▶ Resume" : "⏸ Pause";
+  b.style.background = p ? "var(--grad)" : "";
+  b.style.color = p ? "#fff" : "";
+  b.style.borderColor = p ? "transparent" : "";
+}
+async function togglePause(){
+  try{ const r=await fetch("/api/pause",{method:"POST"}); setPaused((await r.json()).paused); }catch{}
+}
+
+function setVerify(v){
+  if(!v) return;
+  const pill=document.getElementById("pillVerify"), btn=document.getElementById("btnVerify");
+  const partTxt = v.partials ? (" · cleaned "+v.partials+" partial"+(v.partials>1?"s":"")) : "";
+  if(v.running){
+    pill.style.display=""; pill.className="pill";
+    pill.textContent="🛡 scanning… "+(v.checked||0)+(v.corrupt?(" · "+v.corrupt+" bad"):"")+partTxt;
+    btn.disabled=true; btn.style.opacity=".6";
+  }else{
+    btn.disabled=false; btn.style.opacity="";
+    if(v.last_run){
+      pill.style.display=""; pill.className="pill "+(v.corrupt?"no":"ok");
+      pill.textContent = (v.corrupt
+        ? ("🛡 "+v.corrupt+" fixed, re-downloading "+(v.requeued||0))
+        : ("🛡 all OK ("+(v.checked||0)+")")) + partTxt;
+    }else{ pill.style.display="none"; }
+  }
+}
+async function rescan(){
+  const pill=document.getElementById("pillVerify");
+  pill.style.display=""; pill.className="pill"; pill.textContent="🛡 starting scan…";
+  try{ await fetch("/api/rescan",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}); }catch{}
+  loadInfo();
+}
+
+function setComplete(v){
+  if(!v) return;
+  const pill=document.getElementById("pillComplete"), btn=document.getElementById("btnRecheck");
+  if(v.running){
+    pill.style.display=""; pill.className="pill";
+    pill.textContent="🔁 checking posts… "+(v.profiles||0)+" prof"+(v.missing?(" · "+v.missing+" missing"):"");
+    btn.disabled=true; btn.style.opacity=".6";
+  }else{
+    btn.disabled=false; btn.style.opacity="";
+    if(v.last_run){
+      pill.style.display=""; pill.className="pill "+(v.missing?"no":"ok");
+      pill.textContent = v.missing
+        ? ("🔁 "+v.missing+" missing, re-downloading "+(v.requeued||0))
+        : ("🔁 all posts present");
+    }else{ pill.style.display="none"; }
+  }
+}
+async function recheck(){
+  const pill=document.getElementById("pillComplete");
+  pill.style.display=""; pill.className="pill"; pill.textContent="🔁 re-scraping profiles…";
+  try{ await fetch("/api/recheck",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}); }catch{}
+  loadInfo();
+}
+
+// One-click yt-dlp engine refresh (pip-installs latest into the external ytdlp/ folder).
+let _engineUpdating=false;
+async function updateEngine(){
+  if(_engineUpdating) return;
+  _engineUpdating=true;
+  const yt=document.getElementById("pillYtdlp"), prev=yt.textContent;
+  yt.textContent="yt-dlp updating…"; yt.className="pill";
+  try{
+    const r=await fetch("/api/update_engine",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+    const d=await r.json();
+    if(d.ok) toast("✓ "+(d.message||"Engine updated"));
+    else { toast("Update failed: "+(d.error||"unknown"),true); yt.textContent=prev; }
+  }catch(e){ toast("Update failed: "+e,true); yt.textContent=prev; }
+  _engineUpdating=false;
+  loadInfo();
+}
+
+function curOpts(){
+  return {format:document.getElementById("selFmt").value,
+          quality:document.getElementById("selQual").value,
+          audio_only:document.getElementById("chkAudio").checked};
+}
+async function postDownload(url){
+  const r=await fetch("/api/download",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({url,...curOpts()})});
+  if(!r.ok) return {ok:false};
+  try{ return {ok:true, ...(await r.json())}; }catch{ return {ok:true}; }
+}
+async function submit(){
+  const el=document.getElementById("urlInput"), url=el.value.trim();
+  if(!url){el.focus();return;}
+  const d=await postDownload(url);
+  if(!d.ok){ toast("Couldn't add that URL — check it and try again",true); return; }
+  el.value=""; closePreview(); poll();
+  if(d.bumped)         toast("⏫ Pushed twice — focusing on that download");
+  else if(d.expanding) toast("🔍 Scanning the page…");
+  else if(d.duplicate) toast("Already in the queue");
+  else                 toast("✓ Added to the queue");
+}
+// One-tap paste from the clipboard — a top-requested convenience in downloader GUIs.
+async function pasteUrl(){
+  const el=document.getElementById("urlInput");
+  try{
+    const t=((await navigator.clipboard.readText())||"").trim();
+    if(t){ el.value=t; el.focus(); toast("📋 Pasted from clipboard"); }
+    else { el.focus(); toast("Clipboard is empty",true); }
+  }catch{ el.focus(); toast("Couldn't read clipboard — paste with Ctrl+V",true); }
+}
+
+// ── Preview / verify a profile before downloading ──────────────────────────
+let _previewItems=[];
+function fmtDur(s){
+  if(s===null||s===undefined||s==="") return "";
+  s=Math.round(s); const ss=String(s%60).padStart(2,"0");
+  const m=Math.floor(s/60), h=Math.floor(m/60);
+  return h>0?`${h}:${String(m%60).padStart(2,"0")}:${ss}`:`${m}:${ss}`;
+}
+async function doPreview(){
+  const el=document.getElementById("urlInput"), url=el.value.trim();
+  if(!url){el.focus();return;}
+  const btn=document.getElementById("btnPreview");
+  btn.classList.add("busy"); btn.textContent="⏳ Reading…";
+  showPreviewLoading();
+  try{
+    const r=await fetch("/api/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});
+    const d=await r.json();
+    if(d.error) showPreview(`<div class="pv-empty">⚠ ${esc(d.error)}</div>`,"Preview failed",0);
+    else renderPreview(d);
+  }catch(e){ showPreview(`<div class="pv-empty">⚠ ${esc(String(e))}</div>`,"Preview failed",0); }
+  btn.classList.remove("busy"); btn.textContent="🔍 Preview";
+}
+function renderPreview(d){
+  _previewItems=d.items||[];
+  const who=d.uploader?`<b>${esc(d.uploader)}</b>`:"this link";
+  const plat=d.platform?` · ${esc(d.platform)}`:"";
+  const title=(d.kind==="single")
+    ? `1 item from ${who}${plat}`
+    : `Found <b>${d.count}</b> upload${d.count===1?"":"s"} from ${who}${plat}`;
+  let rows;
+  if(!_previewItems.length){ rows=`<div class="pv-empty">No items found.</div>`; }
+  else{
+    rows=_previewItems.map((it,i)=>`
+      <div class="pv-item">
+        <div class="pv-idx">${i+1}</div>
+        ${it.thumb?`<img class="pv-thumb" src="${esc(it.thumb)}" onerror="this.style.visibility='hidden'">`:`<div class="pv-thumb"></div>`}
+        <div class="pv-info">
+          <div class="pv-name" title="${esc(it.title)}">${esc(it.title)}</div>
+          <div class="pv-dur">${fmtDur(it.duration)}</div>
+        </div>
+        <button class="pv-dl" onclick="downloadItem(${i})" title="Download just this">⬇</button>
+      </div>`).join("");
+    if(d.count>_previewItems.length)
+      rows+=`<div class="pv-empty">…and ${d.count-_previewItems.length} more — all included in “Download All”.</div>`;
+  }
+  showPreview(rows,title,d.count);
+}
+function showPreviewLoading(){
+  const rows=Array.from({length:5},()=>
+    `<div class="pv-skel"><div class="sk sk-thumb"></div>`+
+    `<div style="flex:1"><div class="sk sk-line" style="width:70%;margin-bottom:7px"></div>`+
+    `<div class="sk sk-line" style="width:35%"></div></div></div>`).join("");
+  document.getElementById("pvTitle").innerHTML="⏳ Reading…";
+  document.getElementById("pvList").innerHTML=rows;
+  document.getElementById("pvDownloadAll").style.display="none";
+  document.getElementById("previewPanel").style.display="";
+}
+function showPreview(listHtml,titleHtml,count){
+  document.getElementById("pvTitle").innerHTML=titleHtml;
+  document.getElementById("pvList").innerHTML=listHtml;
+  const all=document.getElementById("pvDownloadAll");
+  all.textContent=count>1?`⬇ Download All ${count}`:"⬇ Download";
+  all.style.display=count>0?"":"none";
+  document.getElementById("previewPanel").style.display="";
+}
+function closePreview(){ document.getElementById("previewPanel").style.display="none"; }
+async function downloadAllPreview(){
+  const url=document.getElementById("urlInput").value.trim();
+  if(url){ await postDownload(url); closePreview(); document.getElementById("urlInput").value=""; poll(); }
+}
+async function downloadItem(i){
+  const it=_previewItems[i];
+  if(it&&it.url){ await postDownload(it.url); poll(); }
+}
+async function deleteJob(id){await fetch(`/api/jobs/${id}`,{method:"DELETE"});poll();}
+async function retryJob(id){await fetch(`/api/jobs/${id}/retry`,{method:"POST"});renderJobs._sig=null;poll();toast("↻ Retrying download");}
+async function clearDone(){await fetch("/api/jobs/clear",{method:"POST"});renderJobs._sig=null;renderJobs._peak=0;poll();toast("Cleared finished downloads");}
+async function cancelAll(){
+  if(!confirm("Cancel ALL active and queued downloads?\n\nFinished and failed downloads are kept.")) return;
+  try{ const r=await fetch("/api/jobs/cancel_all",{method:"POST"}); const n=(await r.json()).cancelled||0;
+       renderJobs._sig=null; renderJobs._peak=0; poll(); toast(`⛔ Cancelled ${n} download${n===1?"":"s"}`); }catch{}
+}
+async function retryFailed(){
+  try{ const r=await fetch("/api/jobs/retry_failed",{method:"POST"}); const n=(await r.json()).requeued||0;
+       renderJobs._sig=null; poll(); toast(n?`↻ Retrying ${n} failed download${n===1?"":"s"}`:"No failed downloads to retry"); }catch{}
+}
+async function openFolder(type){await fetch("/api/folder",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type})});}
+
+// ── Library: collapse / expand (remembered across refreshes) ────────────────
+function applyLibCollapsed(collapsed){
+  document.getElementById("libList").style.display = collapsed ? "none" : "";
+  document.getElementById("libHdr").classList.toggle("collapsed", collapsed);
+}
+function toggleLib(){
+  const collapsed = !(localStorage.getItem("libCollapsed")==="1");
+  localStorage.setItem("libCollapsed", collapsed?"1":"0");
+  applyLibCollapsed(collapsed);
+}
+applyLibCollapsed(localStorage.getItem("libCollapsed")==="1");
+
+// ── Library: how many videos each profile has ──────────────────────────────
+let _libItems=[];
+async function loadLibrary(){
+  try{
+    const r=await fetch("/api/library"); if(!r.ok) return;
+    _libItems=await r.json();
+    document.getElementById("libCount").textContent=_libItems.length;
+    const list=document.getElementById("libList");
+    if(!_libItems.length){ list.innerHTML='<div class="lib-empty">No profile folders yet — download a profile to see it here.</div>'; return; }
+    list.innerHTML=_libItems.map((it,i)=>{
+      const frac = it.albums_total
+        ? `<span class="lib-frac">${it.albums_done}/${it.albums_total} albums</span>`
+        : `<span class="lib-frac dim">scanning…</span>`;
+      return `<div class="lib-row" title="Open ${esc(it.name)} — ${it.count} videos downloaded" onclick="openProfile(${i})">
+        <span class="lib-ic">${TYPE_ICON[it.type]||"📹"}</span>
+        <span class="lib-name">${esc(it.name)}</span>
+        ${frac}
+        <span class="lib-count">${it.count}</span>
+      </div>`;
+    }).join("");
+  }catch{}
+}
+async function openProfile(i){
+  const it=_libItems[i];
+  if(it) await fetch("/api/folder",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:it.type,profile:it.name})});
+}
+loadLibrary(); scheduleSlow();
+function onFmtChange(){document.getElementById("chkAudio").checked=document.getElementById("selFmt").value==="mp3";}
+function onAudioToggle(){if(document.getElementById("chkAudio").checked)document.getElementById("selFmt").value="mp3";}
+</script>
+</body>
+</html>

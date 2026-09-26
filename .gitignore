@@ -1,0 +1,36 @@
+# ─── Private runtime state — NEVER commit ───────────────────────────
+config.json                # personal settings (telegram keys, blocklists)
+server_state.json          # your download history/queue
+removed.json
+dead_albums.json
+album_filter_cache.json
+content_hashes.json
+profile_totals.json
+verify_cache.json
+download_archive.txt
+cookies.txt
+telegram.session
+telegram*.session*
+telegram_login.py          # holds your telegram api_id/api_hash
+*.log
+*.log.*
+
+# ─── Downloaded media & work dirs ───────────────────────────────────
+downloads/
+_work/
+source/downloads/
+
+# ─── Binaries / build artifacts ─────────────────────────────────────
+Universal_Downloader.exe
+ffmpeg.exe
+source/dist/
+source/build/
+*.spec
+__pycache__/
+*.pyc
+
+# ─── Vendored third-party copy (fetched at build time instead) ──────
+source/ytdlp/
+source/cookies.txt
+source/download_archive.txt
+source/make_icon.py
