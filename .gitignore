@@ -1,6 +1,7 @@
 # ─── Private runtime state — NEVER commit ───────────────────────────
-config.json                # personal settings (telegram keys, blocklists)
-server_state.json          # your download history/queue
+# (comments MUST be on their own line — a trailing "# ..." becomes part of the pattern)
+config.json
+server_state.json
 removed.json
 dead_albums.json
 album_filter_cache.json
@@ -11,7 +12,7 @@ download_archive.txt
 cookies.txt
 telegram.session
 telegram*.session*
-telegram_login.py          # holds your telegram api_id/api_hash
+telegram_login.py
 *.log
 *.log.*
 
@@ -34,3 +35,7 @@ source/ytdlp/
 source/cookies.txt
 source/download_archive.txt
 source/make_icon.py
+
+# ─── Local convenience files not meant for the repo ─────────────────
+README.txt
+Start Universal Downloader.bat
