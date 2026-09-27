@@ -3,8 +3,8 @@
 // @namespace    local.universal.downloader
 // @author       ELO (Ghost999-dot)
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNiMDZiZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNmQyOGQ5Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHJ4PSIxNiIgZmlsbD0idXJsKCNnKSIvPgogIDwhLS0gb3JiaXQgcmluZzogdGhlICJ1bml2ZXJzYWwiIG5vZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjI5IiByPSIxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utb3BhY2l0eT0iMC4yMCIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgPCEtLSBkb3dubG9hZCBhcnJvdyAtLT4KICA8cGF0aCBkPSJNMzIgMTQgVjMzIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTIyIDI1IGwxMCAxMCBsMTAgLTEwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPCEtLSB0cmF5IC8gaW5ib3ggLS0+CiAgPHBhdGggZD0iTTE3IDQxIHY0IGE1IDUgMCAwIDAgNSA1IGgyMCBhNSA1IDAgMCAwIDUgLTUgdi00IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=
-// @version      1.5.0
-// @description  Send videos / audio / images from selected sites AND Twitter/X to your local Universal Downloader app. Plus on X: absolute timestamp reformatting and a simplify (narrow-feed) mode.
+// @version      1.6.0
+// @description  Grabber sites → your local Universal Downloader app. On X/Twitter → one-click media download (captured from X's own traffic, saved by the browser) plus absolute timestamps and a simplify (narrow-feed) mode.
 // @match        *://*/*
 // @updateURL    http://127.0.0.1:9898/userscript.user.js
 // @downloadURL  http://127.0.0.1:9898/userscript.user.js
@@ -14,8 +14,11 @@
 // @grant        GM_deleteValue
 // @grant        GM_addStyle
 // @grant        GM_registerMenuCommand
+// @grant        GM_download
 // @connect      127.0.0.1
 // @connect      localhost
+// @connect      video.twimg.com
+// @connect      pbs.twimg.com
 // @run-at       document-idle
 // @noframes
 // ==/UserScript==
@@ -148,6 +151,55 @@
       if (title) btn.title = title;
     }
 
+    // ── Passive media capture from X's OWN API responses (XEnhancer trick) ──
+    // Hook XHR, watch the JSON X already fetches, and remember each tweet's media.
+    // A click then downloads from this cache (GraphQL fetch is only a fallback).
+    const mediaMap = new Map();   // statusId -> { text, items:[{url,fmt}] }
+    function findParent(obj, key, out) {
+      out = out || [];
+      if (Array.isArray(obj)) { for (const it of obj) findParent(it, key, out); }
+      else if (obj && typeof obj === "object") {
+        for (const k in obj) {
+          if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+          if (k === key) out.push(obj);
+          findParent(obj[k], key, out);
+        }
+      }
+      return out;
+    }
+    function pickMedia(m) {
+      if (m.type === "photo") return { url: (m.media_url_https || "") + ":orig", fmt: "jpg" };
+      const mp4 = (m.video_info?.variants || []).filter(v => v.content_type === "video/mp4")
+        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      return mp4 ? { url: mp4.url, fmt: "mp4" } : null;
+    }
+    function extractMedia(text) {
+      let data; try { data = JSON.parse(text); } catch (e) { return; }
+      for (const ent of findParent(data, "extended_entities")) {
+        if (!ent.extended_entities) continue;
+        const id = ent.id_str || ent.conversation_id_str;
+        if (!id) continue;
+        const items = (ent.extended_entities.media || [])
+          .filter(m => ["video", "animated_gif", "photo"].includes(m.type))
+          .map(pickMedia).filter(Boolean);
+        if (!items.length) continue;
+        const t = ((ent.full_text || "").split("https://t.co")[0] || "").trim().slice(0, 50);
+        mediaMap.set(String(id), { text: t, items });
+      }
+    }
+    function hookXHR() {
+      const O = XMLHttpRequest.prototype.open, S = XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.open = function (m, u) { this._udUrl = u; return O.apply(this, arguments); };
+      XMLHttpRequest.prototype.send = function () {
+        this.addEventListener("load", function () {
+          try { if (this._udUrl && (this.responseType === "" || this.responseType === "text") && this.responseText) extractMedia(this.responseText); } catch (e) {}
+        });
+        return S.apply(this, arguments);
+      };
+    }
+    const getExt = u => { try { return new URL(u).pathname.split(".").pop() || null; } catch (e) { return null; } };
+    const sanitize = s => String(s || "").replace(/[\/\\?%*:|"<>\r\n]/g, "_").trim();
+
     function mediaUrls(json, index) {
       let leg = json?.legacy;
       let medias = leg?.extended_entities?.media || [];
@@ -166,28 +218,39 @@
 
     async function click(btn, status_id, index) {
       if (btn.classList.contains("loading")) return;
-      setStatus(btn, "loading", "Resolving…");
-      let json;
-      try { json = await fetchJson(status_id); }
-      catch (e) { setStatus(btn, "failed", "API error — are you logged in?"); return; }
-      if (!json || !json.legacy) { setStatus(btn, "failed", "API error"); return; }
+      setStatus(btn, "loading", "Preparing…");
 
-      const items = mediaUrls(json, index);
-      if (!items.length) { setStatus(btn, "failed", "No downloadable media in this tweet"); return; }
+      // 1) prefer media X already handed us (captured passively via the XHR hook)
+      let items = [], name = "";
+      const cap = mediaMap.get(String(status_id));
+      if (cap && cap.items.length) { items = cap.items.slice(); name = cap.text; }
 
-      toast("⬇ Sending " + items.length + " item" + (items.length > 1 ? "s" : "") + " to downloader…", "#a855f7");
-      let left = items.length, failed = 0;
-      items.forEach(it => send(it.url, it.fmt, false, function (ok) {
-        if (!ok) failed++;
-        if (--left === 0) {
-          if (failed === items.length) { setStatus(btn, "failed", "Send failed — is the app running?"); toast("✕ Nothing sent — open Universal_Downloader.exe", "#ef4444"); }
-          else {
-            setStatus(btn, "completed", "Sent ✓");
-            toast("✓ Sent " + (items.length - failed) + "/" + items.length + " to downloader", "#a855f7");
-            if (history.indexOf(status_id) < 0) { history.push(status_id); GM_setValue("ud_tw_history", history); }
+      // 2) fallback: ask the GraphQL API directly (uses your logged-in session)
+      if (!items.length) {
+        try {
+          const json = await fetchJson(status_id);
+          if (json && json.legacy) {
+            items = mediaUrls(json, null);
+            name = ((json.legacy.full_text || "").split("https://t.co")[0] || "").trim().slice(0, 50);
           }
-        }
-      }, true));
+        } catch (e) {}
+      }
+
+      if (index) { const m = items[parseInt(index, 10) - 1]; items = m ? [m] : []; }
+      if (!items.length) { setStatus(btn, "failed", "No media captured yet — scroll the tweet into view and retry"); return; }
+
+      // 3) download in the browser (X works differently from the grabber sites)
+      const base = sanitize(name) || String(status_id);
+      let left = items.length, ok = 0;
+      const done = () => {
+        setStatus(btn, ok ? "completed" : "failed", ok ? "Downloaded" : "Download failed");
+        if (ok && history.indexOf(status_id) < 0) { history.push(status_id); GM_setValue("ud_tw_history", history); }
+      };
+      items.forEach((it, i) => {
+        const nm = base + (items.length > 1 ? "-" + (i + 1) : "") + "." + (getExt(it.url) ?? it.fmt);
+        GM_download({ url: it.url, name: nm, onload: () => { ok++; if (--left === 0) done(); },
+                      onerror: () => { if (--left === 0) done(); }, ontimeout: () => { if (--left === 0) done(); } });
+      });
     }
 
     function addToArticle(article) {
@@ -270,13 +333,14 @@
 
     return {
       init: async function () {
+        hookXHR();                       // start capturing X's media traffic immediately
         history = await GM_getValue("ud_tw_history", []);
         document.head.insertAdjacentHTML("beforeend", "<style>" + CSS + "</style>");
         new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) detect(n); })))
           .observe(document.body, { childList: true, subtree: true });
         // sweep anything already on the page
         document.querySelectorAll("article").forEach(a => addToArticle(a));
-        toast("⬇ Universal Downloader active on Twitter/X", "#a855f7");
+        toast("⬇ X downloader active — saves media to your browser", "#a855f7");
       }
     };
   })();
