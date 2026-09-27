@@ -3,8 +3,8 @@
 // @namespace    local.universal.downloader
 // @author       ELO (Ghost999-dot)
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNiMDZiZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNmQyOGQ5Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHJ4PSIxNiIgZmlsbD0idXJsKCNnKSIvPgogIDwhLS0gb3JiaXQgcmluZzogdGhlICJ1bml2ZXJzYWwiIG5vZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjI5IiByPSIxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utb3BhY2l0eT0iMC4yMCIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgPCEtLSBkb3dubG9hZCBhcnJvdyAtLT4KICA8cGF0aCBkPSJNMzIgMTQgVjMzIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTIyIDI1IGwxMCAxMCBsMTAgLTEwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPCEtLSB0cmF5IC8gaW5ib3ggLS0+CiAgPHBhdGggZD0iTTE3IDQxIHY0IGE1IDUgMCAwIDAgNSA1IGgyMCBhNSA1IDAgMCAwIDUgLTUgdi00IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=
-// @version      1.6.0
-// @description  Grabber sites → your local Universal Downloader app. On X/Twitter → one-click media download (captured from X's own traffic, saved by the browser) plus absolute timestamps and a simplify (narrow-feed) mode.
+// @version      1.6.1
+// @description  Grabber sites AND X/Twitter → your local Universal Downloader app. On X, media is captured passively from X's own traffic and the resolved URLs are sent to the app. Plus absolute timestamps and a simplify (narrow-feed) mode on X.
 // @match        *://*/*
 // @updateURL    http://127.0.0.1:9898/userscript.user.js
 // @downloadURL  http://127.0.0.1:9898/userscript.user.js
@@ -14,11 +14,8 @@
 // @grant        GM_deleteValue
 // @grant        GM_addStyle
 // @grant        GM_registerMenuCommand
-// @grant        GM_download
 // @connect      127.0.0.1
 // @connect      localhost
-// @connect      video.twimg.com
-// @connect      pbs.twimg.com
 // @run-at       document-idle
 // @noframes
 // ==/UserScript==
@@ -239,18 +236,20 @@
       if (index) { const m = items[parseInt(index, 10) - 1]; items = m ? [m] : []; }
       if (!items.length) { setStatus(btn, "failed", "No media captured yet — scroll the tweet into view and retry"); return; }
 
-      // 3) download in the browser (X works differently from the grabber sites)
-      const base = sanitize(name) || String(status_id);
-      let left = items.length, ok = 0;
-      const done = () => {
-        setStatus(btn, ok ? "completed" : "failed", ok ? "Downloaded" : "Download failed");
-        if (ok && history.indexOf(status_id) < 0) { history.push(status_id); GM_setValue("ud_tw_history", history); }
-      };
-      items.forEach((it, i) => {
-        const nm = base + (items.length > 1 ? "-" + (i + 1) : "") + "." + (getExt(it.url) ?? it.fmt);
-        GM_download({ url: it.url, name: nm, onload: () => { ok++; if (--left === 0) done(); },
-                      onerror: () => { if (--left === 0) done(); }, ontimeout: () => { if (--left === 0) done(); } });
-      });
+      // 3) hand the resolved URLs to the local app, so X media lands in downloads/<type>/
+      toast("⬇ Sending " + items.length + " item" + (items.length > 1 ? "s" : "") + " to downloader…", "#a855f7");
+      let left = items.length, failed = 0;
+      items.forEach(it => send(it.url, it.fmt, false, function (ok) {
+        if (!ok) failed++;
+        if (--left === 0) {
+          if (failed === items.length) { setStatus(btn, "failed", "Send failed — is the app running?"); toast("✕ Nothing sent — open Universal_Downloader.exe", "#ef4444"); }
+          else {
+            setStatus(btn, "completed", "Sent ✓");
+            toast("✓ Sent " + (items.length - failed) + "/" + items.length + " to downloader", "#a855f7");
+            if (history.indexOf(status_id) < 0) { history.push(status_id); GM_setValue("ud_tw_history", history); }
+          }
+        }
+      }, true));
     }
 
     function addToArticle(article) {
@@ -340,7 +339,7 @@
           .observe(document.body, { childList: true, subtree: true });
         // sweep anything already on the page
         document.querySelectorAll("article").forEach(a => addToArticle(a));
-        toast("⬇ X downloader active — saves media to your browser", "#a855f7");
+        toast("⬇ X downloader active — sends media to the app", "#a855f7");
       }
     };
   })();
