@@ -800,6 +800,9 @@ def _fmt_dur(secs: int) -> str:
 _DROPBOX_RE = re.compile(r"https?://(?:www\.)?dropbox\.com/", re.I)
 def _is_dropbox(url: str) -> bool: return bool(_DROPBOX_RE.match(url or ""))
 
+_TWITTER_RE = re.compile(r"https?://([a-z0-9-]+\.)*(twimg\.com|x\.com|twitter\.com)/", re.I)
+def _is_twitter(url: str) -> bool:  return bool(_TWITTER_RE.match(url or ""))
+
 def _dropbox_direct(url: str) -> str:
     """Turn a Dropbox share link into a direct-download link (works for ANY file type,
        not just the videos yt-dlp's extractor handles). dl=0 -> dl=1."""
@@ -2277,6 +2280,8 @@ def _download(jid: str):
 
     # ── Save into  downloads/<type>/<poster>/  (poster folder when we know it) ──
     uploader = _safe_name(job.uploader or meta_uploader)
+    if _is_twitter(job.url):
+        uploader = "TWITTER"                       # all X/Twitter media into one general folder
     if _is_blocked_poster(uploader):               # poster learned in the pre-pass -> re-check
         with _lock:
             _jobs.pop(jid, None)
