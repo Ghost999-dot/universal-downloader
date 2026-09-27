@@ -241,9 +241,10 @@ a.pill:hover { color:var(--accent-ink); border-color:var(--accent); background:v
 .card-body { flex:1; min-width:0; }
 .card-title { font-size:13.5px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
 .card-url { font-size:11px; color:var(--ghost); font-family:'Consolas',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:7px; }
-.card-headrow { display:flex; align-items:baseline; gap:16px; margin-bottom:3px; }
+.card-headrow { display:flex; align-items:baseline; gap:16px; margin-bottom:3px; position:relative; }
 .card-headrow .card-title { margin-bottom:0; flex:1 1 auto; min-width:0; }
-.card-dest { font-size:11px; color:var(--accent-ink); font-family:'Consolas',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 0 auto; max-width:48%; margin:0; display:flex; align-items:center; gap:5px; }
+.card-count-mid { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font:700 12.5px 'Consolas',monospace; color:var(--accent-ink); background:rgba(124,108,255,.16); border:1px solid rgba(124,108,255,.28); padding:2px 12px; border-radius:99px; white-space:nowrap; pointer-events:none; }
+.card-dest { font-size:11px; color:var(--accent-ink); font-family:'Consolas',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 0 auto; max-width:52%; margin:0; display:flex; align-items:center; gap:5px; }
 .card-meta { display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:12px; }
 .card-err { color:var(--danger); font-size:11.5px; margin-top:6px; word-break:break-word; }
 
@@ -608,11 +609,17 @@ function cardTitle(job){ return (job.title&&job.title!==job.url)?trunc(job.title
 // Destination folder a job saves into: downloads/<type>/<poster>/ (poster folder when known).
 const DEST_SUBDIR={video:"videos",audio:"audios",image:"images",live:"lives"};
 function jobFolder(job){ const b=DEST_SUBDIR[job.type]||"videos"; return job.uploader ? b+"/"+job.uploader : b; }
+function jobCount(job){ const u=(renderJobs._upc||{})[job.uploader]; return (u&&u[1]>1)?u:null; }  // [done,total] for this creator
+// Centered per-creator counter (e.g. 6/675) shown at the top of the card.
+function countHtml(job){
+  const u=jobCount(job);
+  return u ? `<div class="card-count-mid" title="${esc(u[0]+" of "+u[1]+" from "+(job.uploader||"")+" done")}">${u[0]}/${u[1]}</div>` : "";
+}
+function destInner(job){ return `📁 ${esc(jobFolder(job))}`; }
 function destHtml(job){
   // show once we know where it lands: any active/finished job, or a queued one with a known poster
   if(job.status!=="downloading"&&job.status!=="finished"&&!job.uploader) return "";
-  const f=jobFolder(job);
-  return `<div class="card-dest" title="downloads/${esc(f)}/">📁 ${esc(f)}</div>`;
+  return `<div class="card-dest" title="downloads/${esc(jobFolder(job))}/">${destInner(job)}</div>`;
 }
 
 function renderCard(job){
@@ -627,7 +634,7 @@ function renderCard(job){
   return `<div class="card s-${job.status}" data-id="${esc(job.id)}" data-struct="${structSig(job)}">
     ${cardVisual(job)}
     <div class="card-body">
-      <div class="card-headrow"><div class="card-title">${esc(cardTitle(job))}</div>${destHtml(job)}</div>
+      <div class="card-headrow"><div class="card-title">${esc(cardTitle(job))}</div>${countHtml(job)}${destHtml(job)}</div>
       <div class="card-url">${esc(trunc(job.url,70))}</div>
       ${progHtml}
       <div class="card-meta">${metaHtml(job)}</div>
@@ -646,7 +653,12 @@ function updateCard(el, job){
   const tEl=el.querySelector(".card-title"), title=cardTitle(job);
   if(tEl&&tEl.textContent!==title) tEl.textContent=title;     // textContent auto-escapes
   const dEl=el.querySelector(".card-dest");                    // keep the folder line current
-  if(dEl){ const want="📁 "+jobFolder(job); if(dEl.textContent.trim()!==want){ dEl.textContent=want; dEl.title="downloads/"+jobFolder(job)+"/"; } }
+  if(dEl){ const inner=destInner(job); if(dEl.innerHTML!==inner){ dEl.innerHTML=inner; dEl.title="downloads/"+jobFolder(job)+"/"; } }
+  const u=jobCount(job); let cEl=el.querySelector(".card-count-mid");   // centered creator counter
+  if(u){ const txt=u[0]+"/"+u[1];
+    if(!cEl){ const hr=el.querySelector(".card-headrow"); if(hr) hr.insertAdjacentHTML("beforeend", countHtml(job)); }
+    else if(cEl.textContent!==txt){ cEl.textContent=txt; cEl.title=u[0]+" of "+u[1]+" from "+(job.uploader||"")+" done"; }
+  } else if(cEl){ cEl.remove(); }
   const bar=el.querySelector(".prog-bar");
   if(bar){
     const pct=Math.min(100,Math.max(0,job.progress)), ind=isDl&&pct<1;
@@ -691,10 +703,11 @@ function renderJobs(data){
   const jobs = Array.isArray(data) ? data : (data.jobs || []);
   const c    = Array.isArray(data) ? null : data.counts;
   const exp  = Array.isArray(data) ? [] : (data.expanding || []);
+  renderJobs._upc = Array.isArray(data) ? {} : (data.up_counts || {});   // creator done/total counters
   renderDisk(Array.isArray(data) ? null : data.space);   // update the disk-space pill every poll
   renderScanning(exp);                                    // update "scanning…" cards every poll
   // skip the (expensive) re-render when nothing visible changed since last poll
-  const sig = JSON.stringify([c, exp.map(e=>[e.id,e.found,e.note]),
+  const sig = JSON.stringify([c, renderJobs._upc, exp.map(e=>[e.id,e.found,e.note]),
     jobs.map(j=>[j.id,j.status,j.progress,j.items_done,j.filename,j.speed,j.eta,j.title,j.thumb?1:0])]);
   if(sig===renderJobs._sig) return;
   renderJobs._sig=sig;

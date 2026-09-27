@@ -2514,8 +2514,14 @@ def api_jobs():
     # estimate. Separate passes here got expensive with very large queues (10k+ jobs / poll).
     counts = {"downloading": 0, "queued": 0, "finished": 0, "error": 0, "total": len(allj)}
     dl, qd, rest, need = [], [], [], 0
+    up = {}                                                # uploader -> [done, total] across the whole queue
     for j in allj:
         counts[j.status] = counts.get(j.status, 0) + 1
+        if j.uploader:
+            e = up.get(j.uploader)
+            if e is None: e = up[j.uploader] = [0, 0]
+            e[1] += 1
+            if j.status == "finished": e[0] += 1
         if j.status == "downloading":
             dl.append(j)
             est = j.size_est or DEFAULT_EST_BYTES
@@ -2526,7 +2532,9 @@ def api_jobs():
         else:                                              # finished / error (capped by _trim_jobs)
             rest.append(j)
     shown = dl + qd + rest[-MAX_FIN_SHOWN:][::-1]           # most-recent finished/error first
-    return jsonify(jobs=[j.to_dict() for j in shown], counts=counts,
+    shown_ups = {j.uploader for j in shown if j.uploader}  # only send counts the visible cards need
+    up_counts = {u: up[u] for u in shown_ups if u in up}
+    return jsonify(jobs=[j.to_dict() for j in shown], counts=counts, up_counts=up_counts,
                    space=_disk_report(need), expanding=_expanding_snapshot())
 
 @app.route("/api/jobs/<jid>", methods=["DELETE"])
