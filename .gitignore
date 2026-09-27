@@ -8,6 +8,7 @@ album_filter_cache.json
 content_hashes.json
 profile_totals.json
 verify_cache.json
+profile_done.json
 download_archive.txt
 cookies.txt
 telegram.session
