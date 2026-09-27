@@ -16,9 +16,7 @@ by **[ELO (Ghost999-dot)](https://github.com/Ghost999-dot)**
 
 </div>
 
-<p align="center"><img src="docs/screenshot.png" width="860" alt="Universal Downloader UI"></p>
-
-<p align="center"><img src="docs/cards.png" width="720" alt="Download cards showing per-item destination folders"><br><sub>Each download shows its destination folder (📁 <code>videos/&lt;creator&gt;</code>). Creators/thumbnails above are placeholders.</sub></p>
+<p align="center"><img src="docs/screenshot.png" width="920" alt="Universal Downloader UI"><br><sub>Everything funnels into one queue — grabber sites <em>and</em> X/Twitter — each download tagged with its destination folder (📁 <code>videos/&lt;creator&gt;</code>). Creators, thumbnails and URLs shown are placeholders.</sub></p>
 
 > **Heads-up:** this repo is the **app source only**. Your runtime data — `config.json`, `server_state.json`, `cookies.txt`, `telegram.session`, the `downloads/` folder — is git-ignored and never published. Start from `config.example.json`.
 
