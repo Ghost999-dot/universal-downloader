@@ -241,6 +241,7 @@ a.pill:hover { color:var(--accent-ink); border-color:var(--accent); background:v
 .card-body { flex:1; min-width:0; }
 .card-title { font-size:13.5px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
 .card-url { font-size:11px; color:var(--ghost); font-family:'Consolas',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:7px; }
+.card-dest { font-size:11px; color:var(--accent-ink); font-family:'Consolas',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:-3px 0 7px; display:flex; align-items:center; gap:5px; }
 .card-meta { display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:12px; }
 .card-err { color:var(--danger); font-size:11.5px; margin-top:6px; word-break:break-word; }
 
@@ -602,6 +603,15 @@ function structSig(job){
 }
 function cardTitle(job){ return (job.title&&job.title!==job.url)?trunc(job.title):trunc(job.url); }
 
+// Destination folder a job saves into: downloads/<type>/<poster>/ (poster folder when known).
+const DEST_SUBDIR={video:"videos",audio:"audios",image:"images",live:"lives"};
+function jobFolder(job){ const b=DEST_SUBDIR[job.type]||"videos"; return job.uploader ? b+"/"+job.uploader : b; }
+function destHtml(job){
+  if(job.status!=="downloading"&&job.status!=="finished") return "";   // only once it has a real target
+  const f=jobFolder(job);
+  return `<div class="card-dest" title="downloads/${esc(f)}/">📁 ${esc(f)}</div>`;
+}
+
 function renderCard(job){
   const isDl=job.status==="downloading", isFin=job.status==="finished", isErr=job.status==="error";
   let progHtml="";
@@ -616,6 +626,7 @@ function renderCard(job){
     <div class="card-body">
       <div class="card-title">${esc(cardTitle(job))}</div>
       <div class="card-url">${esc(trunc(job.url,70))}</div>
+      ${destHtml(job)}
       ${progHtml}
       <div class="card-meta">${metaHtml(job)}</div>
       ${errLine}
@@ -632,6 +643,8 @@ function updateCard(el, job){
   const isDl=job.status==="downloading", isErr=job.status==="error";
   const tEl=el.querySelector(".card-title"), title=cardTitle(job);
   if(tEl&&tEl.textContent!==title) tEl.textContent=title;     // textContent auto-escapes
+  const dEl=el.querySelector(".card-dest");                    // keep the folder line current
+  if(dEl){ const want="📁 "+jobFolder(job); if(dEl.textContent.trim()!==want){ dEl.textContent=want; dEl.title="downloads/"+jobFolder(job)+"/"; } }
   const bar=el.querySelector(".prog-bar");
   if(bar){
     const pct=Math.min(100,Math.max(0,job.progress)), ind=isDl&&pct<1;

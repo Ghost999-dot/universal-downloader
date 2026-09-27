@@ -16,6 +16,8 @@ by **[ELO (Ghost999-dot)](https://github.com/Ghost999-dot)**
 
 </div>
 
+<p align="center"><img src="docs/screenshot.png" width="860" alt="Universal Downloader UI"></p>
+
 > **Heads-up:** this repo is the **app source only**. Your runtime data — `config.json`, `server_state.json`, `cookies.txt`, `telegram.session`, the `downloads/` folder — is git-ignored and never published. Start from `config.example.json`.
 
 ---
