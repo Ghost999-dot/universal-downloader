@@ -241,7 +241,9 @@ a.pill:hover { color:var(--accent-ink); border-color:var(--accent); background:v
 .card-body { flex:1; min-width:0; }
 .card-title { font-size:13.5px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
 .card-url { font-size:11px; color:var(--ghost); font-family:'Consolas',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:7px; }
-.card-dest { font-size:11px; color:var(--accent-ink); font-family:'Consolas',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:-3px 0 7px; display:flex; align-items:center; gap:5px; }
+.card-headrow { display:flex; align-items:baseline; gap:16px; margin-bottom:3px; }
+.card-headrow .card-title { margin-bottom:0; flex:1 1 auto; min-width:0; }
+.card-dest { font-size:11px; color:var(--accent-ink); font-family:'Consolas',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 0 auto; max-width:48%; margin:0; display:flex; align-items:center; gap:5px; }
 .card-meta { display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:12px; }
 .card-err { color:var(--danger); font-size:11.5px; margin-top:6px; word-break:break-word; }
 
@@ -607,7 +609,8 @@ function cardTitle(job){ return (job.title&&job.title!==job.url)?trunc(job.title
 const DEST_SUBDIR={video:"videos",audio:"audios",image:"images",live:"lives"};
 function jobFolder(job){ const b=DEST_SUBDIR[job.type]||"videos"; return job.uploader ? b+"/"+job.uploader : b; }
 function destHtml(job){
-  if(job.status!=="downloading"&&job.status!=="finished") return "";   // only once it has a real target
+  // show once we know where it lands: any active/finished job, or a queued one with a known poster
+  if(job.status!=="downloading"&&job.status!=="finished"&&!job.uploader) return "";
   const f=jobFolder(job);
   return `<div class="card-dest" title="downloads/${esc(f)}/">📁 ${esc(f)}</div>`;
 }
@@ -624,9 +627,8 @@ function renderCard(job){
   return `<div class="card s-${job.status}" data-id="${esc(job.id)}" data-struct="${structSig(job)}">
     ${cardVisual(job)}
     <div class="card-body">
-      <div class="card-title">${esc(cardTitle(job))}</div>
+      <div class="card-headrow"><div class="card-title">${esc(cardTitle(job))}</div>${destHtml(job)}</div>
       <div class="card-url">${esc(trunc(job.url,70))}</div>
-      ${destHtml(job)}
       ${progHtml}
       <div class="card-meta">${metaHtml(job)}</div>
       ${errLine}
