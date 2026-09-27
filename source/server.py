@@ -413,6 +413,32 @@ def _unmark_removed(url: str):
     _save_removed()
 _load_removed()
 
+# Persistent per-PROFILE completion tally (survives job trimming + restarts), so the
+# on-card counter shows how much of a creator has finished even during active downloads.
+PROFILE_DONE_FILE = BASE / "profile_done.json"
+_profile_done: dict = {}          # uploader -> lifetime finished count
+_profile_done_lock = threading.Lock()
+_done_counted: set = set()        # jids already counted this session (avoid double-count)
+def _load_profile_done():
+    global _profile_done
+    try:    _profile_done = {str(k): int(v) for k, v in json.loads(PROFILE_DONE_FILE.read_text(encoding="utf-8")).items()}
+    except Exception: _profile_done = {}
+def _save_profile_done():
+    with _profile_done_lock:
+        try:    _atomic_json(PROFILE_DONE_FILE, _profile_done)
+        except Exception: pass
+def _profile_complete(job):
+    """Count one finished item toward its creator's lifetime total (once per job)."""
+    if not job or not getattr(job, "uploader", "") or not job.id:
+        return
+    with _profile_done_lock:
+        if job.id in _done_counted:
+            return
+        _done_counted.add(job.id)
+        _profile_done[job.uploader] = _profile_done.get(job.uploader, 0) + 1
+    _save_profile_done()
+_load_profile_done()
+
 # (per-item keyword/duplicate filtering now lives inside the download worker child —
 #  see dl_worker_main's mfilter; the archive file handles dedup across processes.)
 
@@ -2135,6 +2161,7 @@ def _download_mega(job, jid):
             return
         job.status, job.progress = "finished", 100.0
         job.speed, job.eta, job.resume_at, job.tries = "", "", 0.0, 0
+        _profile_complete(job)
         if new_files:
             job.filename   = new_files[0].name
             job.title      = new_files[0].stem if (not job.title or job.title == job.url) else job.title
@@ -2372,6 +2399,7 @@ def _download(jid: str):
             job.status, job.error = "error", err_msg
         else:
             job.status, job.progress = "finished", 100.0
+            _profile_complete(job)
             if job.items_done == 0 and not job.filename:
                 # 'finished' (not 'error') so the resolver won't retry-loop an over-size skip;
                 # the message tells the user WHY nothing was saved.
@@ -2514,14 +2542,11 @@ def api_jobs():
     # estimate. Separate passes here got expensive with very large queues (10k+ jobs / poll).
     counts = {"downloading": 0, "queued": 0, "finished": 0, "error": 0, "total": len(allj)}
     dl, qd, rest, need = [], [], [], 0
-    up = {}                                                # uploader -> [done, total] across the whole queue
+    up_pending = {}                                        # uploader -> items not yet finished (live)
     for j in allj:
         counts[j.status] = counts.get(j.status, 0) + 1
-        if j.uploader:
-            e = up.get(j.uploader)
-            if e is None: e = up[j.uploader] = [0, 0]
-            e[1] += 1
-            if j.status == "finished": e[0] += 1
+        if j.uploader and j.status != "finished":
+            up_pending[j.uploader] = up_pending.get(j.uploader, 0) + 1
         if j.status == "downloading":
             dl.append(j)
             est = j.size_est or DEFAULT_EST_BYTES
@@ -2533,7 +2558,11 @@ def api_jobs():
             rest.append(j)
     shown = dl + qd + rest[-MAX_FIN_SHOWN:][::-1]           # most-recent finished/error first
     shown_ups = {j.uploader for j in shown if j.uploader}  # only send counts the visible cards need
-    up_counts = {u: up[u] for u in shown_ups if u in up}
+    # per-profile counter: done = lifetime finished (persisted), total = done + still-pending
+    up_counts = {}
+    for u in shown_ups:
+        done = _profile_done.get(u, 0)
+        up_counts[u] = [done, done + up_pending.get(u, 0)]
     return jsonify(jobs=[j.to_dict() for j in shown], counts=counts, up_counts=up_counts,
                    space=_disk_report(need), expanding=_expanding_snapshot())
 
