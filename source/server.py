@@ -1021,6 +1021,25 @@ def _disk_album_ids(folder):
     except Exception: pass
     return ids
 
+_disk_done_cache: Dict[str, tuple] = {}     # creator -> (album_count, ts); short TTL so polls stay cheap
+_disk_done_lock = threading.Lock()
+def _creator_disk_done(name: str, ttl: float = 20.0) -> int:
+    """How many of a creator's albums are actually on disk (distinct ids across all type folders)."""
+    now = time.time()
+    with _disk_done_lock:
+        c = _disk_done_cache.get(name)
+        if c and now - c[1] < ttl:
+            return c[0]
+    ids = set()
+    for sub in SUBDIRS.values():
+        d = DL_ROOT / sub / name
+        if d.is_dir():
+            ids |= _disk_album_ids(d)
+    n = len(ids)
+    with _disk_done_lock:
+        _disk_done_cache[name] = (n, now)
+    return n
+
 def _totals_filler():
     """Background: gently learn each profile's total album count (each at most every 6h)."""
     while True:
@@ -2161,7 +2180,6 @@ def _download_mega(job, jid):
             return
         job.status, job.progress = "finished", 100.0
         job.speed, job.eta, job.resume_at, job.tries = "", "", 0.0, 0
-        _profile_complete(job)
         if new_files:
             job.filename   = new_files[0].name
             job.title      = new_files[0].stem if (not job.title or job.title == job.url) else job.title
@@ -2399,7 +2417,6 @@ def _download(jid: str):
             job.status, job.error = "error", err_msg
         else:
             job.status, job.progress = "finished", 100.0
-            _profile_complete(job)
             if job.items_done == 0 and not job.filename:
                 # 'finished' (not 'error') so the resolver won't retry-loop an over-size skip;
                 # the message tells the user WHY nothing was saved.
@@ -2558,11 +2575,14 @@ def api_jobs():
             rest.append(j)
     shown = dl + qd + rest[-MAX_FIN_SHOWN:][::-1]           # most-recent finished/error first
     shown_ups = {j.uploader for j in shown if j.uploader}  # only send counts the visible cards need
-    # per-profile counter: done = lifetime finished (persisted), total = done + still-pending
+    # per-profile counter: done = albums actually on disk (kept up to date from the files),
+    # total = the creator's real online album count (learned in the background), or done+pending until known.
     up_counts = {}
     for u in shown_ups:
-        done = _profile_done.get(u, 0)
-        up_counts[u] = [done, done + up_pending.get(u, 0)]
+        done = _creator_disk_done(u)
+        online = _totals.get(u)
+        total = online if (online and online >= done) else (done + up_pending.get(u, 0))
+        up_counts[u] = [done, total]
     return jsonify(jobs=[j.to_dict() for j in shown], counts=counts, up_counts=up_counts,
                    space=_disk_report(need), expanding=_expanding_snapshot())
 
