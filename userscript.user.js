@@ -3,7 +3,7 @@
 // @namespace    local.universal.downloader
 // @author       ELO (Ghost999-dot)
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNiMDZiZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNmQyOGQ5Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHJ4PSIxNiIgZmlsbD0idXJsKCNnKSIvPgogIDwhLS0gb3JiaXQgcmluZzogdGhlICJ1bml2ZXJzYWwiIG5vZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjI5IiByPSIxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utb3BhY2l0eT0iMC4yMCIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgPCEtLSBkb3dubG9hZCBhcnJvdyAtLT4KICA8cGF0aCBkPSJNMzIgMTQgVjMzIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTIyIDI1IGwxMCAxMCBsMTAgLTEwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPCEtLSB0cmF5IC8gaW5ib3ggLS0+CiAgPHBhdGggZD0iTTE3IDQxIHY0IGE1IDUgMCAwIDAgNSA1IGgyMCBhNSA1IDAgMCAwIDUgLTUgdi00IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=
-// @version      1.6.1
+// @version      1.7.0
 // @description  Grabber sites AND X/Twitter → your local Universal Downloader app. On X, media is captured passively from X's own traffic and the resolved URLs are sent to the app. Plus absolute timestamps and a simplify (narrow-feed) mode on X.
 // @match        *://*/*
 // @updateURL    http://127.0.0.1:9898/userscript.user.js
@@ -56,13 +56,15 @@
   // ═══════════════════════ Shared: send to the app ═══════════════════════
   // onDone(ok) is optional; `quiet` suppresses this function's own toasts (callers that
   // fire many sends at once show a single aggregate toast instead).
-  function send(url, fmt, audio, onDone, quiet) {
+  function send(url, fmt, audio, onDone, quiet, title) {
     if (!url) { toast("✕ Couldn't find a link there", "#ef4444"); if (onDone) onDone(false); return; }
     if (!quiet) toast("⬇ Sending…", "#a855f7");
+    const body = { url: url, format: fmt || "mp4", audio_only: !!audio, quality: QUALITY };
+    if (title) body.title = title;                 // caller-supplied filename (e.g. the X post title)
     GM_xmlhttpRequest({
       method: "POST", url: API,
       headers: { "Content-Type": "application/json" },
-      data: JSON.stringify({ url: url, format: fmt || "mp4", audio_only: !!audio, quality: QUALITY }),
+      data: JSON.stringify(body),
       timeout: 9000,
       onload: function (r) {
         const ok = r.status >= 200 && r.status < 300;
@@ -172,17 +174,34 @@
     }
     function extractMedia(text) {
       let data; try { data = JSON.parse(text); } catch (e) { return; }
-      for (const ent of findParent(data, "extended_entities")) {
-        if (!ent.extended_entities) continue;
-        const id = ent.id_str || ent.conversation_id_str;
-        if (!id) continue;
-        const items = (ent.extended_entities.media || [])
-          .filter(m => ["video", "animated_gif", "photo"].includes(m.type))
-          .map(pickMedia).filter(Boolean);
-        if (!items.length) continue;
-        const t = ((ent.full_text || "").split("https://t.co")[0] || "").trim().slice(0, 50);
-        mediaMap.set(String(id), { text: t, items });
+      const stack = [data];
+      while (stack.length) {
+        const o = stack.pop();
+        if (Array.isArray(o)) { for (const x of o) stack.push(x); continue; }
+        if (!o || typeof o !== "object") continue;
+        const leg = o.legacy, media = leg && leg.extended_entities && leg.extended_entities.media;
+        if (media && Array.isArray(media)) {
+          const id = leg.id_str || leg.conversation_id_str;
+          if (id) {
+            const items = media.filter(m => ["video", "animated_gif", "photo"].includes(m.type)).map(pickMedia).filter(Boolean);
+            if (items.length) {
+              const usr = (o.core && o.core.user_results && o.core.user_results.result && o.core.user_results.result.legacy) || {};
+              const name = (usr.name || "").trim(), handle = (usr.screen_name || "").trim();
+              const txt = ((leg.full_text || "").split("https://t.co")[0] || "").replace(/\s+/g, " ").trim();
+              mediaMap.set(String(id), { name, handle, text: txt, items });
+            }
+          }
+        }
+        for (const k in o) { const v = o[k]; if (v && typeof v === "object") stack.push(v); }
       }
+    }
+    // Build a filename from a captured tweet: "Author Name - tweet text" (with sensible fallbacks).
+    function tweetTitle(meta) {
+      if (!meta) return "";
+      const name = (meta.name || "").trim();
+      const body = (meta.text || "").trim() || (meta.handle ? "@" + meta.handle : "");
+      if (name && body) return (name + " - " + body).slice(0, 150);
+      return (name || body || "").slice(0, 150);
     }
     function hookXHR() {
       const O = XMLHttpRequest.prototype.open, S = XMLHttpRequest.prototype.send;
@@ -218,9 +237,9 @@
       setStatus(btn, "loading", "Preparing…");
 
       // 1) prefer media X already handed us (captured passively via the XHR hook)
-      let items = [], name = "";
+      let items = [], title = "";
       const cap = mediaMap.get(String(status_id));
-      if (cap && cap.items.length) { items = cap.items.slice(); name = cap.text; }
+      if (cap && cap.items.length) { items = cap.items.slice(); title = tweetTitle(cap); }
 
       // 2) fallback: ask the GraphQL API directly (uses your logged-in session)
       if (!items.length) {
@@ -228,7 +247,9 @@
           const json = await fetchJson(status_id);
           if (json && json.legacy) {
             items = mediaUrls(json, null);
-            name = ((json.legacy.full_text || "").split("https://t.co")[0] || "").trim().slice(0, 50);
+            const usr = json.core?.user_results?.result?.legacy || {};
+            const txt = ((json.legacy.full_text || "").split("https://t.co")[0] || "").replace(/\s+/g, " ").trim();
+            title = tweetTitle({ name: usr.name, handle: usr.screen_name, text: txt });
           }
         } catch (e) {}
       }
@@ -236,7 +257,7 @@
       if (index) { const m = items[parseInt(index, 10) - 1]; items = m ? [m] : []; }
       if (!items.length) { setStatus(btn, "failed", "No media captured yet — scroll the tweet into view and retry"); return; }
 
-      // 3) hand the resolved URLs to the local app, so X media lands in downloads/<type>/
+      // 3) hand the resolved URLs to the local app (named after the post), lands in downloads/videos/TWITTER/
       toast("⬇ Sending " + items.length + " item" + (items.length > 1 ? "s" : "") + " to downloader…", "#a855f7");
       let left = items.length, failed = 0;
       items.forEach(it => send(it.url, it.fmt, false, function (ok) {
@@ -249,7 +270,7 @@
             if (history.indexOf(status_id) < 0) { history.push(status_id); GM_setValue("ud_tw_history", history); }
           }
         }
-      }, true));
+      }, true, title));
     }
 
     function addToArticle(article) {

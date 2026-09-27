@@ -1073,6 +1073,8 @@ def _new_jid() -> str:
         _id_n += 1
         return f"{int(time.time()*1000)}{_id_n:03d}"
 
+_dl_titles: Dict[str, str] = {}       # jid -> caller-supplied filename (e.g. the X post title)
+
 def _queue_job(url, fmt, quality, audio, uploader="", tier=1):
     """Queue one job unless this URL is already pending. Returns id or None.
        tier 0 = a standalone post you submitted (served before profile-scan jobs);
@@ -2296,6 +2298,14 @@ def _download(jid: str):
         target    = base                             # no poster -> straight in the type folder
         # 'Uploader - ' prefix only when the uploader is actually known (no more "NA - ")
         name_tmpl = "%(uploader&{} - |)s%(title)s [%(id)s].%(ext)s"
+    # X/Twitter: name the file after the POST (author + text) the userscript captured, since the
+    # raw media URL has no useful title. [%(id)s] keeps every file unique.
+    if _is_twitter(job.url):
+        _t = _dl_titles.get(jid) or (job.title if job.title and job.title != job.url else "")
+        if _t:
+            _safe = (_safe_name(_t) or "twitter")[:150]
+            name_tmpl = _safe.replace("%", "%%") + " [%(id)s].%(ext)s"
+            job.title = _t                           # keep the nice name on the card too
     target.mkdir(parents=True, exist_ok=True)
     _save_state()
 
@@ -2522,6 +2532,7 @@ def api_download():
     fmt     = d.get("format", "mp4")
     quality = d.get("quality", "best")
     audio   = bool(d.get("audio_only", False))
+    title   = (d.get("title") or "").strip()      # optional caller-supplied name (X posts send this)
     _unmark_removed(url)                          # a deliberate re-submit un-does an earlier delete
     # A user/profile page -> scrape it into album jobs in the background.
     if _is_profile(url):
@@ -2535,6 +2546,11 @@ def api_download():
         return jsonify(expanding=True)
     jid = _queue_job(url, fmt, quality, audio, tier=0)   # standalone post -> jumps ahead of scans
     if jid:
+        if title:
+            _dl_titles[jid] = title
+            with _lock:
+                j = _jobs.get(jid)
+                if j: j.title = title
         _save_state()
         return jsonify(id=jid)
     # Not queued as new. If it's already here (pushed twice), FOCUS on it instead of duplicating.
