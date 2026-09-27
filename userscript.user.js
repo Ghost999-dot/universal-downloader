@@ -3,14 +3,16 @@
 // @namespace    local.universal.downloader
 // @author       ELO (Ghost999-dot)
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNiMDZiZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNmQyOGQ5Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHJ4PSIxNiIgZmlsbD0idXJsKCNnKSIvPgogIDwhLS0gb3JiaXQgcmluZzogdGhlICJ1bml2ZXJzYWwiIG5vZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjI5IiByPSIxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utb3BhY2l0eT0iMC4yMCIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgPCEtLSBkb3dubG9hZCBhcnJvdyAtLT4KICA8cGF0aCBkPSJNMzIgMTQgVjMzIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTIyIDI1IGwxMCAxMCBsMTAgLTEwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPCEtLSB0cmF5IC8gaW5ib3ggLS0+CiAgPHBhdGggZD0iTTE3IDQxIHY0IGE1IDUgMCAwIDAgNSA1IGgyMCBhNSA1IDAgMCAwIDUgLTUgdi00IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=
-// @version      1.4.3
-// @description  Send videos / audio / images from selected sites AND Twitter/X to your local Universal Downloader app. Twitter tweets get one-click buttons that route their media into the app.
+// @version      1.5.0
+// @description  Send videos / audio / images from selected sites AND Twitter/X to your local Universal Downloader app. Plus on X: absolute timestamp reformatting and a simplify (narrow-feed) mode.
 // @match        *://*/*
 // @updateURL    http://127.0.0.1:9898/userscript.user.js
 // @downloadURL  http://127.0.0.1:9898/userscript.user.js
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_deleteValue
+// @grant        GM_addStyle
 // @grant        GM_registerMenuCommand
 // @connect      127.0.0.1
 // @connect      localhost
@@ -280,6 +282,166 @@
   })();
 
   // ════════════════════════════════════════════════════════════════════
+  //  TWITTER EXTRAS — absolute timestamps + simplify (narrow-feed) mode
+  //  Adapted from XEnhancer (PeterParker / Levivi, MIT). Downloading stays
+  //  routed to the local app via the Twitter module above; this only adds
+  //  the timestamp reformatter and the optional narrow layout.
+  // ════════════════════════════════════════════════════════════════════
+  const TwitterExtras = (function () {
+    const L = { settings:"Time format settings", titleDateFormat:"Time format settings:", buttonClose:"Close", simplifyMode:"Simplify Mode", turnOn:"Turn on", turnOff:"Turn off" };
+    const WEEK_FULL=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const MONTH_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const MONTH_FULL=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const FMT_DEFAULT=16;
+    const FORMATS=[
+      {format:"Do nothing",example:"N/A"},
+      {format:"ISO 8601 T",example:"2025-07-09T22:57:30"},
+      {format:"ISO 8601 (space + s)",example:"2025-07-09 22:57:30"},
+      {format:"ISO 8601 (space, no s)",example:"2025-07-09 22:57"},
+      {format:"US: MMM d, yyyy h:mm A",example:"Jul 9, 2025, 10:57 PM"},
+      {format:"US: EEE, MMM d, yyyy h:mm A",example:"Wed, Jul 9, 2025, 10:57 PM"},
+      {format:"US: MM/dd/yyyy h:mm A",example:"07/09/2025 10:57 PM"},
+      {format:"US: MM/dd/yyyy HH:mm",example:"07/09/2025 22:57"},
+      {format:"EU/UK: dd/MM/yyyy HH:mm",example:"09/07/2025 22:57"},
+      {format:"DE: dd.MM.yyyy, HH:mm",example:"09.07.2025, 22:57"},
+      {format:"EU long: d MMMM yyyy, HH:mm",example:"9 July 2025, 22:57"},
+      {format:"CN: yyyy年M月d日 HH:mm",example:"2025年7月9日 22:57"},
+      {format:"East Asia: yyyy/MM/dd HH:mm",example:"2025/07/09 22:57"},
+      {format:"UK short: EEE d MMM yyyy HH:mm",example:"Wed 9 Jul 2025 22:57"},
+      {format:"Unix ctime (en)",example:"Wed Jul  9 22:57:30 2025"},
+      {format:"US full: EEEE, MMMM d, yyyy h:mm:ss A",example:"Wednesday, July 9, 2025, 10:57:30 PM"},
+      {format:"Compact: hh.mm A·mmm d,yy",example:"10.57 PM·Jul 9,25"},
+      {format:"TW ROC: Myyy-MM-dd HH:mm",example:"M114-07-09 22:57"}
+    ];
+    let fmt = GM_getValue("fmt", FMT_DEFAULT);
+    (function(){ const max=FORMATS.length-1; const v=parseInt(String(fmt),10);
+      if(Number.isNaN(v)||v<0||v>max){ fmt=String(Math.min(Math.max(parseInt(String(FMT_DEFAULT),10),0),max)); GM_setValue("fmt",fmt); } else fmt=String(v); })();
+
+    function df(date,f){
+      const pad=n=>("0"+n).slice(-2);
+      const YE=date.getFullYear(), YE2=YE.toString().slice(-2), YM=YE-1911;
+      const MO=pad(date.getMonth()+1), MO_IDX=date.getMonth(), MO_NAME=MONTH_SHORT[MO_IDX], MO_NAME_FULL=MONTH_FULL[MO_IDX];
+      const DA=pad(date.getDate()), dNum=parseInt(DA,10);
+      const weekAbbr=()=>WEEK_FULL[date.getDay()].slice(0,3);
+      const HO=pad(date.getHours()), MI=pad(date.getMinutes()), SE=pad(date.getSeconds());
+      const h12=date.getHours()%12||12, HO12=pad(h12), AMPM=date.getHours()>=12?"PM":"AM";
+      const F=[
+        `${YE}-${MO}-${DA}T${HO}:${MI}:${SE}`,
+        `${YE}-${MO}-${DA} ${HO}:${MI}:${SE}`,
+        `${YE}-${MO}-${DA} ${HO}:${MI}`,
+        `${MO_NAME} ${dNum}, ${YE}, ${HO12}:${MI} ${AMPM}`,
+        `${weekAbbr()}, ${MO_NAME} ${dNum}, ${YE}, ${HO12}:${MI} ${AMPM}`,
+        `${MO}/${DA}/${YE} ${HO12}:${MI} ${AMPM}`,
+        `${MO}/${DA}/${YE} ${HO}:${MI}`,
+        `${DA}/${MO}/${YE} ${HO}:${MI}`,
+        `${DA}.${MO}.${YE}, ${HO}:${MI}`,
+        `${dNum} ${MO_NAME_FULL} ${YE}, ${HO}:${MI}`,
+        `${YE}年${MO_IDX+1}月${dNum}日 ${HO}:${MI}`,
+        `${YE}/${MO}/${DA} ${HO}:${MI}`,
+        `${weekAbbr()} ${dNum} ${MO_NAME} ${YE} ${HO}:${MI}`,
+        `${weekAbbr()} ${MO_NAME} ${String(dNum).padStart(2," ")} ${HO}:${MI}:${SE} ${YE}`,
+        `${WEEK_FULL[date.getDay()]}, ${MO_NAME_FULL} ${dNum}, ${YE}, ${HO12}:${MI}:${SE} ${AMPM}`,
+        `${HO12}.${MI} ${AMPM}·${MO_NAME} ${dNum},${YE2}`,
+        `M${YM}-${MO}-${DA} ${HO}:${MI}`
+      ];
+      return F[f] ?? F[0];
+    }
+
+    const MYNAME="ud_ts";
+    function repldatetime(){
+      const SEL='main div[data-testid="primaryColumn"] section article time[datetime*=":"]';
+      const SEL_2='div[aria-labelledby="modal-header"] div[data-testid^="User-Name"] time[datetime]';
+      const SEL_3='div[aria-labelledby="modal-header"] div[aria-label] time[datetime]';
+      const SEL_4='main section[aria-labelledby="detail-header"] article div[data-testid^="User-Name"] time[datetime]';
+      const SEL_5='main section div[data-testid="conversation"] div[aria-label] time[datetime]';
+      document.querySelectorAll([SEL,SEL_2,SEL_3,SEL_4,SEL_5].join(", ")).forEach(e=>{
+        if(fmt==0) return;
+        const SEL_ADD="span.us-"+MYNAME;
+        const d=e.getAttribute("datetime");
+        const s=df(new Date(d), fmt-1);
+        const pe=e.parentNode, old=pe.querySelectorAll(SEL_ADD);
+        if(!old.length){
+          const span=document.createElement("span");
+          span.className="us-"+MYNAME; span.setAttribute("datetime",d); span.setAttribute("local-datetime",s);
+          span.textContent=s; span.style=e.style; e.style.setProperty("display","none"); pe.appendChild(span);
+        } else if(old[0].getAttribute("local-datetime")!=s){
+          old[0].setAttribute("local-datetime",s); old[0].textContent=s; old[0].style=e.style;
+        }
+      });
+    }
+
+    const dlg = {
+      number: Math.ceil(Math.random()*1e8),
+      make(){
+        const dialog=document.createElement("div");
+        dialog.className="dialog_u_"+this.number;
+        dialog.style.cssText="all:initial;background:#fff;border:1px solid #e1e8ed;border-radius:10px;box-shadow:0 16px 48px rgba(15,20,25,.14),0 4px 16px rgba(15,20,25,.08);font-family:monospace;font-size:12px;width:640px;max-width:calc(100vw - 24px);box-sizing:border-box;padding:8px;position:fixed;right:8px;top:8px;z-index:2147483647;overflow:auto;display:none;";
+        const escH=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        let rows='<table style="width:100%;border:1px solid #c0bfbf;border-collapse:collapse;">';
+        for(let i=1;i<=FORMATS.length;i++){
+          if(i%2!==0) rows+='<tr style="width:100%;border:1px solid #c0bfbf;">';
+          const it=FORMATS[i-1], exT=String(it.example).replace(/"/g,"&quot;");
+          rows+=`<td width="50%" style="border:1px solid #c0bfbf;padding:5px;vertical-align:top;" title="${exT}"><div><div style="color:#000;font-size:13px;"><input type="radio" name="fmt" value="${i-1}"/><b>【${i}】${escH(it.format)}</b></div><div style="color:#555;font-size:11px;margin-top:4px;padding-left:20px;">${escH(it.example)}</div></div></td>`;
+          if(i%2===0) rows+='</tr>';
+        }
+        if(FORMATS.length%2!==0) rows+='</tr>';
+        rows+='</table>';
+        dialog.innerHTML=`<div style="font-size:17px;font-weight:700;margin:15px auto;padding:0 4px;text-align:center;font-family:system-ui,sans-serif;color:#0f1419;">${escH(L.titleDateFormat)}</div><div>${rows}</div><div style="margin-top:15px;text-align:center;"><button type="button" name="closex" style="border:1px solid #1d9bf0;border-radius:999px;padding:5px 18px;font-size:14px;font-weight:600;font-family:system-ui,sans-serif;background:linear-gradient(180deg,#1d9bf0,#1a8cd8);color:#fff;cursor:pointer;box-shadow:0 2px 10px rgba(29,155,240,.35);">${escH(L.buttonClose)}</button></div>`;
+        return dialog;
+      },
+      init(){
+        const dialog=this.make();
+        document.body.appendChild(dialog);
+        dialog.querySelector("button[name='closex']").addEventListener("click",()=>{
+          for(const e of dialog.querySelectorAll('input[name="fmt"]')){ if(e.checked){ fmt=e.value; break; } }
+          GM_setValue("fmt",fmt); dialog.style.display="none";
+        },false);
+        GM_registerMenuCommand(L.settings,()=>{
+          if(dialog.style.display!=="none") return;
+          const input=dialog.querySelector(`input[name="fmt"][value="${String(fmt)}"]`);
+          if(input) input.checked=true;
+          dialog.style.display="block";
+        });
+      }
+    };
+
+    function initSimplify(){
+      const enabled=GM_getValue("x_simplify_mode","")==="true";
+      GM_registerMenuCommand(L.simplifyMode+` (${enabled?L.turnOff:L.turnOn})`,()=>{
+        if(enabled) GM_deleteValue("x_simplify_mode"); else GM_setValue("x_simplify_mode","true");
+        location.reload();
+      });
+      if(!enabled) return;
+      function update(){
+        const width=Math.min(document.documentElement.offsetWidth||800,800);
+        if(window.innerWidth===width && document.documentElement.clientWidth===width) return;
+        window.__defineGetter__("innerWidth",()=>width);
+        document.documentElement.__defineGetter__("clientWidth",()=>width);
+        if(window.visualViewport) window.visualViewport.__defineGetter__("width",()=>width);
+        window.dispatchEvent(new Event("resize"));
+        if(window.visualViewport) window.visualViewport.dispatchEvent(new Event("resize"));
+      }
+      window.addEventListener("load",update);
+      window.addEventListener("resize",update);
+      if(window.visualViewport) window.visualViewport.addEventListener("resize",update);
+      document.addEventListener("visibilitychange",update);
+      GM_addStyle("#react-root main{-webkit-flex-grow:1!important;flex-grow:1!important}@media (min-width:800px){[role='listbox']{max-width:500px!important}}");
+      update();
+    }
+
+    return {
+      init(){
+        try { dlg.init(); } catch(e){}
+        try { initSimplify(); } catch(e){}
+        let pending=false;
+        const schedule=()=>{ if(pending)return; pending=true; setTimeout(()=>{ pending=false; try{repldatetime();}catch(e){} },300); };
+        new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+        schedule();
+      }
+    };
+  })();
+
+  // ════════════════════════════════════════════════════════════════════
   //  GRABBER (main) — bubble / right-click / hotkey on allow-listed sites
   // ════════════════════════════════════════════════════════════════════
   const Grabber = (function () {
@@ -378,6 +540,6 @@
   })();
 
   // ═══════════════════════════════ Start ═══════════════════════════════
-  if (IS_TWITTER) Twitter.init();   // Twitter/X: dedicated buttons → app
-  else            Grabber.init();   // everywhere else: allow-listed bubble/right-click → app
+  if (IS_TWITTER) { Twitter.init(); TwitterExtras.init(); }   // X: app-download buttons + timestamp/simplify extras
+  else            Grabber.init();                             // everywhere else: allow-listed bubble/right-click → app
 })();
