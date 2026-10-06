@@ -3,7 +3,7 @@
 // @namespace    local.universal.downloader
 // @author       ELO (Ghost999-dot)
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNiMDZiZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNmQyOGQ5Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHJ4PSIxNiIgZmlsbD0idXJsKCNnKSIvPgogIDwhLS0gb3JiaXQgcmluZzogdGhlICJ1bml2ZXJzYWwiIG5vZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjI5IiByPSIxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utb3BhY2l0eT0iMC4yMCIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgPCEtLSBkb3dubG9hZCBhcnJvdyAtLT4KICA8cGF0aCBkPSJNMzIgMTQgVjMzIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTIyIDI1IGwxMCAxMCBsMTAgLTEwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPCEtLSB0cmF5IC8gaW5ib3ggLS0+CiAgPHBhdGggZD0iTTE3IDQxIHY0IGE1IDUgMCAwIDAgNSA1IGgyMCBhNSA1IDAgMCAwIDUgLTUgdi00IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=
-// @version      1.7.0
+// @version      1.8.0
 // @description  Grabber sites AND X/Twitter → your local Universal Downloader app. On X, media is captured passively from X's own traffic and the resolved URLs are sent to the app. Plus absolute timestamps and a simplify (narrow-feed) mode on X.
 // @match        *://*/*
 // @updateURL    http://127.0.0.1:9898/userscript.user.js
@@ -529,7 +529,16 @@
   //  GRABBER (main) — bubble / right-click / hotkey on allow-listed sites
   // ════════════════════════════════════════════════════════════════════
   const Grabber = (function () {
-    const DEFAULT_ALLOW = ["erome.com", "eporner.com", "ebonybaddies.com"];
+    const DEFAULT_ALLOW = [
+      // original Universal Downloader sites
+      "erome.com", "ebonybaddies.com",
+      // same set MagicPH supports (all yt-dlp capable except onlyfans)
+      "pornhub.com", "pornhubpremium.com", "youporn.com", "youporngay.com",
+      "redtube.com", "tube8.com", "thumbzilla.com", "onlyfans.com",
+      "xhamster.com", "xnxx.com", "xvideos.com", "91porn.com", "hqporner.com",
+      "spankbang.com", "porntrex.com", "analdin.com", "porn00.org",
+      "sxyprn.com", "eporner.com", "youjizz.com"
+    ];
 
     function getAllow() { try { return JSON.parse(GM_getValue("allow", JSON.stringify(DEFAULT_ALLOW))); } catch (e) { return DEFAULT_ALLOW.slice(); } }
     function setAllow(list) { GM_setValue("allow", JSON.stringify(list)); }
@@ -605,6 +614,11 @@
 
     return {
       init: function () {
+        // one-time: fold the newly-shipped default sites into any saved allow-list
+        if (!GM_getValue("allow_migrated_v2", false)) {
+          try { setAllow(Array.from(new Set(getAllow().concat(DEFAULT_ALLOW)))); } catch (e) {}
+          GM_setValue("allow_migrated_v2", true);
+        }
         window.addEventListener("keydown", function (e) {
           if (!!e.altKey === HOTKEY.alt && !!e.shiftKey === HOTKEY.shift && !!e.ctrlKey === HOTKEY.ctrl
               && (e.code === HOTKEY.code || (e.key || "").toLowerCase() === "d")) {
