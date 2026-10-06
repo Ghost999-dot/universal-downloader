@@ -94,6 +94,10 @@ Copy `config.example.json` → `config.json`. Notable keys:
 
 `POST /api/download` `{url, format, audio_only, quality}` · `GET /api/jobs` · `GET /api/info` · `POST /api/jobs/cancel_all` · `POST /api/blocklist` · … (see `server.py`).
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
+
 ## License
 
 MIT — © 2026 ELO (Ghost999-dot). See [LICENSE](LICENSE).
