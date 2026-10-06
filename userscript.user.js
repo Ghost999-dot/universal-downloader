@@ -3,7 +3,7 @@
 // @namespace    local.universal.downloader
 // @author       ELO (Ghost999-dot)
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNiMDZiZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNmQyOGQ5Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHJ4PSIxNiIgZmlsbD0idXJsKCNnKSIvPgogIDwhLS0gb3JiaXQgcmluZzogdGhlICJ1bml2ZXJzYWwiIG5vZCAtLT4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjI5IiByPSIxNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utb3BhY2l0eT0iMC4yMCIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgPCEtLSBkb3dubG9hZCBhcnJvdyAtLT4KICA8cGF0aCBkPSJNMzIgMTQgVjMzIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTIyIDI1IGwxMCAxMCBsMTAgLTEwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPCEtLSB0cmF5IC8gaW5ib3ggLS0+CiAgPHBhdGggZD0iTTE3IDQxIHY0IGE1IDUgMCAwIDAgNSA1IGgyMCBhNSA1IDAgMCAwIDUgLTUgdi00IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=
-// @version      1.9.0
+// @version      1.9.1
 // @description  Grabber sites AND X/Twitter → your local Universal Downloader app. On X, media is captured passively from X's own traffic and the resolved URLs are sent to the app. Plus absolute timestamps and a simplify (narrow-feed) mode on X.
 // @match        *://*/*
 // @updateURL    http://127.0.0.1:9898/userscript.user.js
@@ -26,9 +26,10 @@
   // ═══════════════════════════ Shared config ═══════════════════════════
   const PORT    = 9898;
   const API     = "http://127.0.0.1:" + PORT + "/api/download";
-  const QUALITIES = ["best", "1080", "720", "480", "360"];        // choices the app understands
-  let QUALITY = GM_getValue("ud_quality", "best");                // persisted; applies to every download
-  if (QUALITIES.indexOf(QUALITY) < 0) QUALITY = "best";
+  const QUALITIES = ["1080", "720", "480", "360", "best"];        // choices the app understands
+  // default 1080 = best available at or below 1080p (so 1080 when present, else 720, then lower)
+  let QUALITY = GM_getValue("ud_quality", "1080");                // persisted; applies to every download
+  if (QUALITIES.indexOf(QUALITY) < 0) QUALITY = "1080";
   const HOTKEY  = { alt: true, shift: true, ctrl: false, code: "KeyD" };  // Alt+Shift+D toggles a site
 
   if (location.port === String(PORT)) return;                     // never run on the app's own page
