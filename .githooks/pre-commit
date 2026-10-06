@@ -1,0 +1,47 @@
+#!/bin/sh
+# ─────────────────────────────────────────────────────────────────────────────
+# Auto-bump the Tampermonkey userscript @version on every commit that touches it.
+#
+# Why: the script's @updateURL/@downloadURL point at the local app, which live-
+# serves this file. Tampermonkey only offers an update when the served @version
+# is strictly newer than what's installed. Forgetting to bump = no update prompt.
+# This hook guarantees the bump so updates always propagate.
+#
+# Behaviour:
+#   * Only acts when userscript.user.js is part of the commit.
+#   * If you ALREADY changed the @version line in this commit, it's respected
+#     (no double-bump) — so manual minor/major bumps still work.
+#   * Otherwise it auto-increments the patch number (1.9.2 -> 1.9.3) and re-stages.
+#
+# Reuse in another userscript repo: drop this file in .githooks/ and run
+#   git config core.hooksPath .githooks
+# (adjust SCRIPT below if the file name differs).
+# ─────────────────────────────────────────────────────────────────────────────
+
+SCRIPT="userscript.user.js"
+
+# Not touching the script? nothing to do.
+git diff --cached --name-only | grep -qx "$SCRIPT" || exit 0
+
+# Did this commit already change the @version line? If so, respect it.
+if git diff --cached -U0 -- "$SCRIPT" | grep -q '^+.*@version'; then
+  exit 0
+fi
+
+cur=$(grep -m1 '@version' "$SCRIPT" | sed -E 's/.*@version[[:space:]]+//' | tr -d '\r\n ')
+[ -n "$cur" ] || exit 0
+
+maj=$(printf '%s' "$cur" | cut -d. -f1)
+min=$(printf '%s' "$cur" | cut -d. -f2)
+pat=$(printf '%s' "$cur" | cut -d. -f3)
+# default any missing component to 0
+[ -n "$maj" ] || maj=0
+[ -n "$min" ] || min=0
+[ -n "$pat" ] || pat=0
+pat=$((pat + 1))
+new="$maj.$min.$pat"
+
+# Replace the @version value in place, preserving the leading "// @version  " padding.
+sed -i -E "s|(@version[[:space:]]+)[0-9][0-9.]*|\1$new|" "$SCRIPT"
+git add "$SCRIPT"
+echo "[pre-commit] userscript @version bumped $cur -> $new"

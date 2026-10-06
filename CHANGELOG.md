@@ -2,8 +2,21 @@
 
 All notable changes to **Universal Downloader** (the app, the web UI, and the browser userscript).
 
-The userscript version is tracked in its `@version` header; the current release is **1.9.1**.
+The userscript version is tracked in its `@version` header; the current release is **1.9.2**.
 Dates are `YYYY-MM-DD`.
+
+---
+
+## [1.9.2] — 2026-10-06 — Auto-versioning
+
+- **Maintenance republish** so Tampermonkey reliably offers the update (served `@version` is now
+  strictly newer than any installed 1.9.1). No functional changes to downloading since 1.9.1.
+- **Automatic version bumping from now on.** A tracked git pre-commit hook (`.githooks/pre-commit`,
+  wired via `core.hooksPath`) increments the userscript's `@version` patch number on every commit that
+  touches `userscript.user.js` — unless you already bumped it manually in that commit. Since the app
+  live-serves the file and the script's `@updateURL` points at the app, every shipped change now
+  propagates to Tampermonkey without anyone remembering to bump. Drop the same hook into any other
+  userscript repo to get the same behaviour.
 
 ---
 
