@@ -803,6 +803,9 @@ def _is_dropbox(url: str) -> bool: return bool(_DROPBOX_RE.match(url or ""))
 _TWITTER_RE = re.compile(r"https?://([a-z0-9-]+\.)*(twimg\.com|x\.com|twitter\.com)/", re.I)
 def _is_twitter(url: str) -> bool:  return bool(_TWITTER_RE.match(url or ""))
 
+_EPORNER_RE = re.compile(r"https?://([a-z0-9-]+\.)*eporner\.com/", re.I)
+def _is_eporner(url: str) -> bool:  return bool(_EPORNER_RE.match(url or ""))
+
 def _dropbox_direct(url: str) -> str:
     """Turn a Dropbox share link into a direct-download link (works for ANY file type,
        not just the videos yt-dlp's extractor handles). dl=0 -> dl=1."""
@@ -1014,15 +1017,20 @@ def _save_totals():
 _load_totals()
 
 def _disk_album_ids(folder):
-    """Distinct album ids that have at least one file in a profile folder."""
-    ids = set()
+    """Distinct albums in a profile folder. Grouped by album TITLE (filename minus the
+       trailing ' (N)' index and any ' [id]' tag), because not every downloaded file is
+       id-tagged — counting by id alone badly under-counts."""
+    keys = set()
     try:
         for f in folder.iterdir():
-            if f.is_file() and f.suffix != ".part":
-                m = re.search(r"\[([A-Za-z0-9]+)(?:-\d+)?\]", f.name)
-                if m: ids.add(m.group(1))
+            if not (f.is_file() and f.suffix != ".part"): continue
+            b = re.sub(r"\.[^.]+$", "", f.name)          # drop extension
+            b = re.sub(r"\s*\[[^\[\]]*\]\s*$", "", b)     # drop trailing [id]
+            b = re.sub(r"\s*\(\d+\)\s*$", "", b)          # drop trailing (N) index
+            b = b.strip().lower()
+            if b: keys.add(b)
     except Exception: pass
-    return ids
+    return keys
 
 _disk_done_cache: Dict[str, tuple] = {}     # creator -> (album_count, ts); short TTL so polls stay cheap
 _disk_done_lock = threading.Lock()
@@ -2169,7 +2177,7 @@ def _download_mega(job, jid):
 
     # ── success: enforce the size cap on new files, then finish ──
     new_files = sorted((target / r) for r in (_snapshot() - before))
-    if MAX_SIZE_BYTES:
+    if MAX_SIZE_BYTES and not (job.tier == 0 or _is_eporner(job.url)):
         kept = []
         for p in new_files:
             try: sz = p.stat().st_size
@@ -2342,8 +2350,10 @@ def _download(jid: str):
         "block_keywords": BLOCK_KEYWORDS, "block_words": BLOCK_WORDS,
         "progress": str(WORK_DIR / f"prog_{jid}.jsonl"),
         "parent_pid": os.getpid(),        # child self-terminates if this app dies (orphan guard)
-        "max_filesize": MAX_SIZE_BYTES or None,   # skip/abort videos over the size cap
-        "max_size_gb": (MAX_SIZE_BYTES / (1024**3)) if MAX_SIZE_BYTES else 0,
+        # Size cap is for BULK profile scrapes; a video you grabbed yourself (tier 0) or any
+        # eporner clip downloads in full regardless of length.
+        "max_filesize": (None if (job.tier == 0 or _is_eporner(job.url)) else (MAX_SIZE_BYTES or None)),
+        "max_size_gb":  (0 if (job.tier == 0 or _is_eporner(job.url)) else ((MAX_SIZE_BYTES / (1024**3)) if MAX_SIZE_BYTES else 0)),
         # ebonybaddies: browser-TLS impersonation clears Cloudflare; item 1 = the main clip.
         "impersonate":    "chrome" if _is_eb(job.url) else None,
         "playlist_items": "1"      if _is_eb_video(job.url) else None,
